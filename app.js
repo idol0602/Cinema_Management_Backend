@@ -12,12 +12,14 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-});
+// app.set('trust proxy', 1);
 
-app.use(limiter);
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 100,
+// });
+
+// app.use(limiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/movies", movieRoutes);

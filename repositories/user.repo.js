@@ -1,4 +1,4 @@
-import { supabase } from "../config/supabase";
+import { supabase } from "../config/supabase.js";
 
 export const findByEmail = async (email) => {
   return await supabase.from("users").select("*").eq("email", email).single();
