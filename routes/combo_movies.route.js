@@ -1,0 +1,14 @@
+import { Router } from "express";
+import * as controller from "../controllers/combo_movies.controller.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import { createComboMovieSchema, updateComboMovieSchema } from "../validators/combo_movies.schema.js";
+
+const router = Router();
+
+router.get("/", controller.getAll);
+router.get("/:id", controller.getById);
+router.post("/", validate(createComboMovieSchema), controller.create);
+router.put("/:id", validate(updateComboMovieSchema), controller.update);
+router.delete("/:id", controller.remove);
+
+export default router;
