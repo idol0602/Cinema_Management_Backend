@@ -5,7 +5,7 @@ export const createMenuItemInTicketSchema = z.object({
   item_id: z.string().min(1),
   quantity: z.number().int().min(1),
   unit_price: z.number().gt(0),
-  total_price: z.number().default(quantity * unit_price).optional(),
+  total_price: z.number().optional(),
 });
 
 export const updateMenuItemInTicketSchema = createMenuItemInTicketSchema.partial();

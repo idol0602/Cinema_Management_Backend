@@ -13,5 +13,6 @@ router.get("/:id", controller.getById);
 router.post("/", validate(createShowTimeSeatSchema), controller.create);
 router.put("/:id", validate(updateShowTimeSeatSchema), controller.update);
 router.delete("/:id", controller.remove);
+router.get("/status/:id", controller.getStatusSeat);
 
 export default router;

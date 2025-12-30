@@ -53,3 +53,14 @@ export const remove = async (req, res, next) => {
     next(e);
   }
 };
+
+export const getStatusSeat = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await service.statusSeat(id);
+    if (error) throw error;
+    return success(res, data, "Get status seat successfully");
+  } catch (e) {
+    next(e);
+  }
+}
