@@ -15,25 +15,20 @@ router.get("/:id", controller.getById);
 
 router.post(
   "/",
-  // auth,
-  // authorize("ADMIN", "STAFF"),
+  auth,
+  authorize("ADMIN", "STAFF"),
   validate(createMovieSchema),
   controller.create
 );
 
 router.put(
   "/:id",
-  // auth,
-  // authorize("ADMIN", "STAFF"),
+  auth,
+  authorize("ADMIN", "STAFF"),
   validate(updateMovieSchema),
   controller.update
 );
 
-router.delete(
-  "/:id",
-  //  auth,
-  //  authorize("ADMIN"),
-  controller.remove
-);
+router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
 
 export default router;

@@ -5,14 +5,28 @@ import {
   createShowTimeSeatSchema,
   updateShowTimeSeatSchema,
 } from "../validators/show_time_seats.schema.js";
+import { auth } from "../middlewares/auth.middleware.js";
+import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
 router.get("/", controller.getAll);
 router.get("/:id", controller.getById);
-router.post("/", validate(createShowTimeSeatSchema), controller.create);
-router.put("/:id", validate(updateShowTimeSeatSchema), controller.update);
-router.delete("/:id", controller.remove);
+router.post(
+  "/",
+  auth,
+  authorize("ADMIN", "STAFF"),
+  validate(createShowTimeSeatSchema),
+  controller.create
+);
+router.put(
+  "/:id",
+  auth,
+  authorize("ADMIN", "STAFF"),
+  validate(updateShowTimeSeatSchema),
+  controller.update
+);
+router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
 router.get("/status/:id", controller.getStatusSeat);
 
 export default router;

@@ -5,7 +5,7 @@ export const findByEmail = async (email) => {
 };
 
 export const create = async (userToCreate) => {
-  return await supabase.from("users").insert(userToCreate).single();
+  return await supabase.from("users").insert(userToCreate).select().single();
 };
 
 export const findAll = async () => {

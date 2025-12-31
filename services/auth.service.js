@@ -41,6 +41,13 @@ export const register = async (payload) => {
   if (error) {
     return { data: null, error };
   }
+
+  if (!data) {
+    const err = new Error("Failed to create user");
+    err.statusCode = 500;
+    return { data: null, error: err };
+  }
+
   const { password: _pw, ...safeUser } = data;
   const token = generateToken(data);
   return {

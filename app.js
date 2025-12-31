@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.route.js";
 import movieRoutes from "./routes/movie.route.js";
 import userRoutes from "./routes/user.route.js";
-import roomRouters from "./routes/room.router.js";
+import roomRoutes from "./routes/room.route.js";
 import combosRoutes from "./routes/combos.route.js";
 import comboItemsRoutes from "./routes/combo_items.route.js";
 import comboMoviesRoutes from "./routes/combo_movies.route.js";
@@ -33,19 +33,17 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// app.set('trust proxy', 1);
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
 
-// const limiter = rateLimit({
-//   windowMs: 15 * 60 * 1000,
-//   max: 100,
-// });
-
-// app.use(limiter);
+app.use(limiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/movies", movieRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/rooms", roomRouters);
+app.use("/api/rooms", roomRoutes);
 app.use("/api/combos", combosRoutes);
 app.use("/api/combo-items", comboItemsRoutes);
 app.use("/api/combo-movies", comboMoviesRoutes);
