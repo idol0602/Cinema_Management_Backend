@@ -27,7 +27,6 @@ export const register = async (payload) => {
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
-
   const userToCreate = {
     id: uuid(),
     name,
