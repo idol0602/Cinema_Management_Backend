@@ -10,7 +10,8 @@ import {
 
 const router = Router();
 
-router.get("/", controller.getAll);
+router.get("/", controller.findAndPaginate);
+router.get("/all", controller.getAll);
 router.get("/:id", controller.getById);
 
 router.post(

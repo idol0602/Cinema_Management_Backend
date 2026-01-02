@@ -1,0 +1,15 @@
+export { moviePaginateConfig } from "./movie.config.js";
+export { userPaginateConfig } from "./user.config.js";
+export { postPaginateConfig } from "./post.config.js";
+export { comboPaginateConfig } from "./combo.config.js";
+export { roomPaginateConfig } from "./room.config.js";
+export { eventPaginateConfig } from "./event.config.js";
+export { commentPaginateConfig } from "./comment.config.js";
+export { discountPaginateConfig } from "./discount.config.js";
+export { showTimePaginateConfig } from "./show_time.config.js";
+export { ticketPaginateConfig } from "./ticket.config.js";
+export { ratePaginateConfig } from "./rate.config.js";
+export { slidePaginateConfig } from "./slide.config.js";
+export { menuItemPaginateConfig } from "./menu_item.config.js";
+export { movieTypePaginateConfig } from "./movie_type.config.js";
+export { seatPaginateConfig } from "./seat.config.js";

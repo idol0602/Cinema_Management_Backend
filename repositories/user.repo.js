@@ -1,4 +1,6 @@
 import { supabase } from "../config/supabase.js";
+import { userPaginateConfig } from "../config/paginate/user.config.js";
+import { paginate } from "../utils/paginate.js";
 
 export const findByEmail = async (email) => {
   return await supabase.from("users").select("*").eq("email", email).single();
@@ -26,4 +28,10 @@ export const update = async (id, data) => {
 
 export const remove = async (id) => {
   return await supabase.from("users").update({ is_active: false }).eq("id", id);
+};
+
+export const findAndPaginate = async (query) => {
+  return await paginate(supabase, "users", query, userPaginateConfig, {
+    is_active: true,
+  });
 };

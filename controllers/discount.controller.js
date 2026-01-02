@@ -53,3 +53,19 @@ export const remove = async (req, res, next) => {
     next(e);
   }
 };
+
+export const findAndPaginate = async (req, res, next) => {
+  try {
+    const result = await service.findAndPaginate(req.query);
+    if (result.error) throw result.error;
+    return res.json({
+      success: true,
+      data: result.data,
+      meta: result.meta,
+      links: result.links,
+      message: "Get discounts successfully",
+    });
+  } catch (e) {
+    next(e);
+  }
+};

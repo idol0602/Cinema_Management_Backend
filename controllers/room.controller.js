@@ -52,4 +52,20 @@ export const remove = async (req, res, next) => {
   } catch (e) {
     next(e);
   }
-}
+};
+
+export const findAndPaginate = async (req, res, next) => {
+  try {
+    const result = await roomService.findAndPaginate(req.query);
+    if (result.error) throw result.error;
+    return res.json({
+      success: true,
+      data: result.data,
+      meta: result.meta,
+      links: result.links,
+      message: "Get rooms successfully",
+    });
+  } catch (e) {
+    next(e);
+  }
+};

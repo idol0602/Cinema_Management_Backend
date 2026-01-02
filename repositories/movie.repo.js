@@ -1,4 +1,6 @@
 import { supabase } from "../config/supabase.js";
+import { moviePaginateConfig } from "../config/paginate/movie.config.js";
+import { paginate } from "../utils/paginate.js";
 
 export const create = async (movie) => {
   return await supabase.from("movies").insert(movie).single();
@@ -26,4 +28,10 @@ export const remove = async (id) => {
       is_active: false,
     })
     .eq("id", id);
+};
+
+export const findAndPaginate = async (query) => {
+  return await paginate(supabase, "movies", query, moviePaginateConfig, {
+    is_active: true,
+  });
 };
