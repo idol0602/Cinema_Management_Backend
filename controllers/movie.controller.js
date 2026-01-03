@@ -1,5 +1,6 @@
 import * as service from "../services/movie.service.js";
 import { success } from "../utils/response.js";
+import fs from "fs";
 
 export const create = async (req, res, next) => {
   try {
@@ -57,7 +58,6 @@ export const remove = async (req, res, next) => {
 export const findAndPaginate = async (req, res, next) => {
   try {
     const result = await service.findAndPaginate(req.query);
-    console.log(req.query);
     if (result.error) throw result.error;
     return res.json({
       success: true,
@@ -67,6 +67,42 @@ export const findAndPaginate = async (req, res, next) => {
       message: "Get movies successfully",
     });
   } catch (e) {
+    next(e);
+  }
+};
+
+export const importFromExcel = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+        data: {
+          imported: 0,
+          skipped: 0,
+        },
+      });
+    }
+    const result = await service.importFromExcel(req.file.path);
+
+    fs.unlinkSync(req.file.path);
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    return res.json({
+      success: true,
+      message: `Imported ${result.imported} movies successfully. Skipped ${result.skipped} invalid rows.`,
+      data: {
+        imported: result.imported,
+        skipped: result.skipped,
+      },
+    });
+  } catch (e) {
+    if (req.file && s.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     next(e);
   }
 };

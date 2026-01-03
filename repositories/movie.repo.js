@@ -35,3 +35,7 @@ export const findAndPaginate = async (query) => {
     is_active: true,
   });
 };
+
+export const bulkCreate = async (movies) => {
+  return await supabase.from("movies").insert(movies);
+};

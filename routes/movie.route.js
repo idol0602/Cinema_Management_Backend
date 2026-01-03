@@ -7,6 +7,7 @@ import {
   createMovieSchema,
   updateMovieSchema,
 } from "../validators/movie.schema.js";
+import { uploadExcel } from "../middlewares/upload.middleware.js";
 
 const router = Router();
 
@@ -20,6 +21,14 @@ router.post(
   authorize("ADMIN", "STAFF"),
   validate(createMovieSchema),
   controller.create
+);
+
+router.post(
+  "/import",
+  auth,
+  authorize("ADMIN", "STAFF"),
+  uploadExcel.single("file"),
+  controller.importFromExcel
 );
 
 router.put(
