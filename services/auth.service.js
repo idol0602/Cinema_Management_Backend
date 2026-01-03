@@ -12,6 +12,7 @@ const generateToken = (user) => {
   );
 };
 
+// actualy dont use in dashboard because admin create user, only login
 export const register = async (payload) => {
   const { name, email, phone, password, role } = payload;
 
