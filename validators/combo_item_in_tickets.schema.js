@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 export const createComboItemInTicketSchema = z.object({
-  ticket_id: z.string().min(1),
+  order_id: z.string().min(1),
   combo_id: z.string().min(1),
 });
 
-export const updateComboItemInTicketSchema = createComboItemInTicketSchema.partial();
+export const updateComboItemInTicketSchema =
+  createComboItemInTicketSchema.partial();

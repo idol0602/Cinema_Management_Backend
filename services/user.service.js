@@ -1,12 +1,15 @@
 import * as repo from "../repositories/user.repo.js";
 import { v4 as uuidv4 } from "uuid";
+import bcrypt from "bcryptjs";
 
 export const findByEmail = (email) => repo.findByEmail(email);
 
-export const create = (user) => {
+export const create = async (user) => {
+  const hashedPassword = await bcrypt.hash(user.password, 10);
   const userWithId = {
     id: uuidv4(),
     ...user,
+    password: hashedPassword,
   };
   return repo.create(userWithId);
 };

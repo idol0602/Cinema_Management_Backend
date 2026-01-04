@@ -3,7 +3,12 @@ import { userPaginateConfig } from "../config/paginate/user.config.js";
 import { paginate } from "../utils/paginate.js";
 
 export const findByEmail = async (email) => {
-  return await supabase.from("users").select("*").eq("email", email).single();
+  return await supabase
+    .from("users")
+    .select("*")
+    .eq("email", email)
+    .eq("is_active", true)
+    .single();
 };
 
 export const create = async (userToCreate) => {

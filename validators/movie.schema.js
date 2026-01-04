@@ -3,7 +3,8 @@ import { z } from "zod";
 export const createMovieSchema = z.object({
   title: z.string(),
   director: z.string(),
-  description: z.string().optional(),
+  country: z.string(),
+  description: z.string(),
   release_date: z
     .string()
     .default(new Date(Date.now()).toISOString())
