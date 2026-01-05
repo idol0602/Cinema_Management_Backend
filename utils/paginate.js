@@ -1,129 +1,114 @@
-// Backend/utils/paginate.js
-import qs from "qs";
+/**
+ * Universal pagination utility for Supabase
+ * Config-driven – reusable for all tables
+ *
+ * Supported:
+ * - pagination
+ * - multi sort
+ * - search (multi columns)
+ * - filter with operators
+ * - base filters (system-level)
+ */
 
-export async function paginate(
+/* ======================================================
+ * MAIN PAGINATE FUNCTION
+ * ====================================================== */
+export async function paginate({
   supabase,
   table,
-  query,
+  query = {},
   config,
-  baseFilters = {}
-) {
-  if (!config) {
-    throw new Error(`Paginate config is required`);
-  }
+  baseFilters = {},
+}) {
+  if (!supabase) throw new Error("Supabase client is required");
+  if (!table) throw new Error("Table name is required");
+  if (!config)
+    throw new Error(`Paginate config is required for table: ${table}`);
 
-  const parsed = typeof query === "string" ? qs.parse(query) : query;
-
-  const page = Math.max(1, parseInt(parsed.page) || 1);
+  /* =========================
+   * 1. PAGINATION
+   * ========================= */
+  const page = Math.max(1, Number(query.page) || 1);
   const limit = Math.min(
-    parseInt(parsed.limit) || config.defaultLimit,
+    Math.max(1, Number(query.limit) || config.defaultLimit),
     config.maxLimit
   );
-
-  // Parse sortBy như nestjs-paginate: ?sortBy=title:ASC
-  let sortBy = config.defaultSortBy;
-  if (parsed.sortBy) {
-    sortBy = Array.isArray(parsed.sortBy)
-      ? parsed.sortBy.map((s) => s.split(":"))
-      : [parsed.sortBy.split(":")];
-  }
-
   const offset = (page - 1) * limit;
 
-  // Base query
+  /* =========================
+   * 2. SORT
+   * ========================= */
+  let sortBy = config.defaultSortBy;
+
+  if (query.sortBy) {
+    sortBy = (Array.isArray(query.sortBy) ? query.sortBy : [query.sortBy])
+      .map((s) => s.split(":"))
+      .filter(([column]) => config.sortableColumns.includes(column));
+  }
+
+  /* =========================
+   * 3. INIT QUERY
+   * ========================= */
   let q = supabase.from(table).select("*", { count: "exact" });
 
-  // Base filters (như is_active)
-  Object.entries(baseFilters).forEach(([k, v]) => (q = q.eq(k, v)));
+  /* =========================
+   * 4. BASE FILTERS (SYSTEM)
+   * ========================= */
+  Object.entries(baseFilters).forEach(([key, value]) => {
+    q = q.eq(key, value);
+  });
 
-  // Filters - support nestjs-paginate format
-  if (parsed.filter) {
-    Object.entries(parsed.filter).forEach(([k, v]) => {
-      if (!config.filterableColumns[k]) return;
+  /* =========================
+   * 5. USER FILTERS
+   * ========================= */
+  if (query.filter) {
+    Object.entries(query.filter).forEach(([column, condition]) => {
+      if (!config.filterableColumns[column]) return;
 
-      if (typeof v === "object" && !Array.isArray(v)) {
-        // Operators: $eq, $gt, $gte, $lt, $lte, $in, $btw, etc
-        Object.entries(v).forEach(([op, val]) => {
-          switch (op) {
-            case "$eq":
-              q = q.eq(k, val);
-              break;
-            case "$ne":
-            case "$not":
-              q = q.neq(k, val);
-              break;
-            case "$gt":
-              q = q.gt(k, val);
-              break;
-            case "$gte":
-              q = q.gte(k, val);
-              break;
-            case "$lt":
-              q = q.lt(k, val);
-              break;
-            case "$lte":
-              q = q.lte(k, val);
-              break;
-            case "$in":
-              q = q.in(k, Array.isArray(val) ? val : [val]);
-              break;
-            case "$contains":
-            case "$ilike":
-              q = q.ilike(k, `%${val}%`);
-              break;
-            case "$starts":
-              q = q.ilike(k, `${val}%`);
-              break;
-            case "$ends":
-              q = q.ilike(k, `%${val}`);
-              break;
-            case "$null":
-              q = val ? q.is(k, null) : q.not(k, "is", null);
-              break;
-            case "$btw":
-              if (Array.isArray(val) && val.length === 2) {
-                q = q.gte(k, val[0]).lte(k, val[1]);
-              }
-              break;
-            default:
-              q = q.eq(k, val);
-          }
+      // operator-based filter
+      if (typeof condition === "object" && !Array.isArray(condition)) {
+        Object.entries(condition).forEach(([operator, value]) => {
+          q = applyFilterOperator(q, column, operator, value);
         });
       } else {
-        q = q.eq(k, v);
+        // simple equality
+        q = q.eq(column, convertValue(condition));
       }
     });
   }
 
-  // Search - nestjs-paginate style
-  if (parsed.search) {
-    const searchBy = parsed.searchBy
-      ? Array.isArray(parsed.searchBy)
-        ? parsed.searchBy
-        : [parsed.searchBy]
+  /* =========================
+   * 6. SEARCH
+   * ========================= */
+  if (query.search && config.searchableColumns.length > 0) {
+    const searchColumns = query.searchBy
+      ? (Array.isArray(query.searchBy)
+          ? query.searchBy
+          : [query.searchBy]
+        ).filter((c) => config.searchableColumns.includes(c))
       : config.searchableColumns;
 
-    const validSearchColumns = searchBy.filter((col) =>
-      config.searchableColumns.includes(col)
-    );
+    if (searchColumns.length > 0) {
+      const orCondition = searchColumns
+        .map((c) => `${c}.ilike.%${query.search}%`)
+        .join(",");
 
-    if (validSearchColumns.length > 0) {
-      q = q.or(
-        validSearchColumns.map((c) => `${c}.ilike.%${parsed.search}%`).join(",")
-      );
+      q = q.or(orCondition);
     }
   }
 
-  // Sort - support multiple sort
+  /* =========================
+   * 7. APPLY SORT
+   * ========================= */
   sortBy.forEach(([column, order]) => {
-    if (config.sortableColumns.includes(column)) {
-      q = q.order(column, {
-        ascending: order?.toUpperCase() === "ASC" || order === "1",
-      });
-    }
+    q = q.order(column, {
+      ascending: order?.toUpperCase() === "ASC",
+    });
   });
 
-  // Paginate
+  /* =========================
+   * 8. EXECUTE QUERY
+   * ========================= */
   const { data, error, count } = await q.range(offset, offset + limit - 1);
 
   if (error) {
@@ -132,19 +117,19 @@ export async function paginate(
 
   const totalPages = Math.ceil(count / limit);
 
-  // Response format giống nestjs-paginate
   return {
     data,
     error: null,
     meta: {
-      itemsPerPage: limit,
       totalItems: count,
+      itemCount: data.length,
+      itemsPerPage: limit,
+      totalPages,
       currentPage: page,
-      totalPages: totalPages,
-      sortBy: sortBy,
-      search: parsed.search,
-      searchBy: parsed.searchBy,
-      filter: parsed.filter,
+      sortBy,
+      search: query.search,
+      searchBy: query.searchBy,
+      filter: query.filter,
     },
     links: {
       first: page > 1 ? `?page=1&limit=${limit}` : undefined,
@@ -157,6 +142,65 @@ export async function paginate(
   };
 }
 
+/* ======================================================
+ * FILTER OPERATOR HANDLER
+ * ====================================================== */
+function applyFilterOperator(query, column, operator, value) {
+  const v = convertValue(value);
+
+  switch (operator) {
+    case "$eq":
+      return query.eq(column, v);
+    case "$ne":
+    case "$not":
+      return query.neq(column, v);
+    case "$gt":
+      return query.gt(column, v);
+    case "$gte":
+      return query.gte(column, v);
+    case "$lt":
+      return query.lt(column, v);
+    case "$lte":
+      return query.lte(column, v);
+    case "$in":
+      return query.in(column, Array.isArray(v) ? v : [v]);
+    case "$contains":
+    case "$ilike":
+      return query.ilike(column, `%${v}%`);
+    case "$starts":
+      return query.ilike(column, `${v}%`);
+    case "$ends":
+      return query.ilike(column, `%${v}`);
+    case "$null":
+      return v ? query.is(column, null) : query.not(column, "is", null);
+    case "$btw":
+      if (Array.isArray(v) && v.length === 2) {
+        return query.gte(column, v[0]).lte(column, v[1]);
+      }
+      return query;
+    default:
+      return query.eq(column, v);
+  }
+}
+
+/* ======================================================
+ * VALUE CONVERTER
+ * ====================================================== */
+function convertValue(value) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (value === "null") return null;
+
+  if (typeof value === "string" && value.trim() !== "" && !isNaN(value)) {
+    return Number(value);
+  }
+
+  return value;
+}
+
+/* ======================================================
+ * CONFIG FACTORY (OPTIONAL)
+ * ====================================================== */
 export function createPaginateConfig({
   sortableColumns = ["created_at"],
   searchableColumns = [],

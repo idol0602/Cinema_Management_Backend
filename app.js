@@ -34,6 +34,10 @@ app.set("query parser", (str) =>
   qs.parse(str, {
     allowDots: true,
     depth: 10,
+    arrayLimit: 100,
+    comma: true,
+    parseArrays: true,
+    allowPrototypes: false,
   })
 );
 app.use(helmet());
