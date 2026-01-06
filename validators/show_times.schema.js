@@ -7,6 +7,7 @@ export const createShowTimeSchema = z.object({
   end_time: z.string().optional(),
   day_type: z.enum(["WEEKDAY", "WEEKEND"]),
   is_active: z.boolean().default(true).optional(),
-})
+  created_at: z.string().default(new Date().toISOString()).optional(),
+});
 
 export const updateShowTimeSchema = createShowTimeSchema.partial();

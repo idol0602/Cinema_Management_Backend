@@ -9,6 +9,7 @@ export const createOrderSchema = z.object({
     .string()
     .default(new Date(Date.now()).toISOString())
     .optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateOrderSchema = createOrderSchema.partial();

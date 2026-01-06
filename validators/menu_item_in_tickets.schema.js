@@ -6,6 +6,7 @@ export const createMenuItemInTicketSchema = z.object({
   quantity: z.number().int().min(1),
   unit_price: z.number().gt(0),
   total_price: z.number().optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateMenuItemInTicketSchema =

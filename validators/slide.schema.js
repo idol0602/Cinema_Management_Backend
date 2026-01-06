@@ -6,6 +6,7 @@ export const createSlideSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
   is_active: z.boolean().default(true).optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateSlideSchema = createSlideSchema.partial();

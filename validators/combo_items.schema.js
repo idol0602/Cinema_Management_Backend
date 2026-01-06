@@ -6,6 +6,7 @@ export const createComboItemSchema = z.object({
   quantity: z.number().int().min(1).default(1).optional(),
   unit_price: z.number(),
   is_active: z.boolean().default(true).optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateComboItemSchema = createComboItemSchema.partial();

@@ -5,6 +5,7 @@ export const createRoomSchema = z.object({
   format: z.enum(["2D", "3D", "IMAX"]),
   location: z.string().optional(),
   is_active: z.boolean().default(true).optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateRoomSchema = createRoomSchema.partial();

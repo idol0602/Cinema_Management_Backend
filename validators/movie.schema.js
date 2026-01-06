@@ -16,6 +16,7 @@ export const createMovieSchema = z.object({
   trailer: z.string().optional(),
   movie_type_id: z.string(),
   is_active: z.boolean().default(true).optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateMovieSchema = createMovieSchema.partial();

@@ -1,6 +1,12 @@
 export const moviePaginateConfig = {
   // dùng combobox chọn tiêu chí sort
-  sortableColumns: ["title", "release_date", "rating", "duration"],
+  sortableColumns: [
+    "title",
+    "release_date",
+    "rating",
+    "duration",
+    "created_at",
+  ],
   // dùng ô search tìm kiếm
   searchableColumns: ["title", "description", "director"],
   // dùng combobox chọn tiêu chí lọc
@@ -8,7 +14,7 @@ export const moviePaginateConfig = {
     movie_type_id: true,
     is_active: true,
   },
-  defaultSortBy: [["release_date", "DESC"]],
+  defaultSortBy: [["created_at", "DESC"]],
   defaultLimit: 10,
   maxLimit: 50,
 };

@@ -7,7 +7,11 @@ export const create = async (movie) => {
 };
 
 export const findAll = async () => {
-  return await supabase.from("movies").select("*").eq("is_active", true);
+  return await supabase
+    .from("movies")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
 };
 
 export const findById = async (id) => {
@@ -36,7 +40,7 @@ export const findAndPaginate = async (query) => {
     table: "movies",
     query: query,
     config: moviePaginateConfig,
-    baseFilters: { is_active: true },
+    baseFilters: {},
   });
 };
 
