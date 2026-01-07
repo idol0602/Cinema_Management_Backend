@@ -1,14 +1,12 @@
 export const menuItemPaginateConfig = {
-  sortableColumns: ["name", "price", "item_type", "num_instock", "created_at"],
+  sortableColumns: ["name", "price", "created_at", "num_instock"],
   searchableColumns: ["name", "description"],
   filterableColumns: {
     name: true,
     item_type: true,
-    price: true,
-    num_instock: true,
     is_active: true,
   },
-  defaultSortBy: [["name", "ASC"]],
-  defaultLimit: 15,
+  defaultSortBy: [["created_at", "DESC"]],
+  defaultLimit: 10,
   maxLimit: 50,
 };

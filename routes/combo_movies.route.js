@@ -1,14 +1,31 @@
 import { Router } from "express";
 import * as controller from "../controllers/combo_movies.controller.js";
 import { validate } from "../middlewares/validate.middleware.js";
-import { createComboMovieSchema, updateComboMovieSchema } from "../validators/combo_movies.schema.js";
+import {
+  createComboMovieSchema,
+  updateComboMovieSchema,
+} from "../validators/combo_movies.schema.js";
+import { auth } from "../middlewares/auth.middleware.js";
+import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
 router.get("/", controller.getAll);
 router.get("/:id", controller.getById);
-router.post("/", validate(createComboMovieSchema), controller.create);
-router.put("/:id", validate(updateComboMovieSchema), controller.update);
-router.delete("/:id", controller.remove);
+router.post(
+  "/",
+  auth,
+  authorize("ADMIN"),
+  validate(createComboMovieSchema),
+  controller.create
+);
+router.put(
+  "/:id",
+  auth,
+  authorize("ADMIN"),
+  validate(updateComboMovieSchema),
+  controller.update
+);
+router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
 
 export default router;

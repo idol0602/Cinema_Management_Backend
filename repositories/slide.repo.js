@@ -23,7 +23,11 @@ export const remove = async (id) =>
   supabase.from("slides").update({ is_active: false }).eq("id", id);
 
 export const findAndPaginate = async (query) => {
-  return await paginate(supabase, "slides", query, slidePaginateConfig, {
-    is_active: true,
+  return await paginate({
+    supabase,
+    table: "slides",
+    query: query,
+    config: slidePaginateConfig,
+    baseFilters: {},
   });
 };

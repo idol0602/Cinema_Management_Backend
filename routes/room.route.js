@@ -17,7 +17,7 @@ router.get("/:id", controller.getById);
 router.post(
   "/",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(createRoomSchema),
   controller.create
 );
@@ -25,7 +25,7 @@ router.post(
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(updateRoomSchema),
   controller.update
 );

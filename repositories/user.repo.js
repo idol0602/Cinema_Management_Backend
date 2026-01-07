@@ -36,7 +36,11 @@ export const remove = async (id) => {
 };
 
 export const findAndPaginate = async (query) => {
-  return await paginate(supabase, "users", query, userPaginateConfig, {
-    is_active: true,
+  return await paginate({
+    supabase,
+    table: "users",
+    query: query,
+    config: userPaginateConfig,
+    baseFilters: {},
   });
 };

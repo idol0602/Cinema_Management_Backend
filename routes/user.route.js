@@ -10,14 +10,14 @@ import {
 
 const router = Router();
 
-router.get("/", controller.findAndPaginate);
-router.get("/all", controller.getAll);
-router.get("/:id", controller.getById);
+router.get("/", auth, authorize("ADMIN"), controller.findAndPaginate);
+router.get("/all", auth, authorize("ADMIN"), controller.getAll);
+router.get("/:id", auth, authorize("ADMIN"), controller.getById);
 
 router.post(
   "/",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(createUserSchema),
   controller.create
 );
@@ -25,7 +25,7 @@ router.post(
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(updateUserSchema),
   controller.update
 );

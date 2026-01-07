@@ -18,7 +18,7 @@ router.get("/:id", controller.getById);
 router.post(
   "/",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(createMovieSchema),
   controller.create
 );
@@ -26,7 +26,7 @@ router.post(
 router.post(
   "/import",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   uploadExcel.single("file"),
   controller.importFromExcel
 );
@@ -34,7 +34,7 @@ router.post(
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(updateMovieSchema),
   controller.update
 );

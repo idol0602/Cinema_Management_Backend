@@ -6,13 +6,26 @@ import {
   updateTicketSchema,
 } from "../validators/ticket.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
+import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
-router.get("/", controller.getAll);
-router.get("/:id", controller.getById);
-router.post("/", auth, validate(createTicketSchema), controller.create);
-router.put("/:id", auth, validate(updateTicketSchema), controller.update);
-router.delete("/:id", auth, controller.remove);
+router.get("/", auth, controller.getAll);
+router.get("/:id", auth, controller.getById);
+router.post(
+  "/",
+  auth,
+  authorize("CUSTOMER", "STAFF"),
+  validate(createTicketSchema),
+  controller.create
+);
+router.put(
+  "/:id",
+  auth,
+  authorize("CUSTOMER", "STAFF"),
+  validate(updateTicketSchema),
+  controller.update
+);
+router.delete("/:id", auth, authorize("CUSTOMER", "STAFF"), controller.remove);
 
 export default router;

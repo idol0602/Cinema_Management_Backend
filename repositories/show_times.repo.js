@@ -23,7 +23,11 @@ export const remove = async (id) =>
   supabase.from("show_times").update({ is_active: false }).eq("id", id);
 
 export const findAndPaginate = async (query) => {
-  return await paginate(supabase, "show_times", query, showTimePaginateConfig, {
-    is_active: true,
+  return await paginate({
+    supabase,
+    table: "show_times",
+    query: query,
+    config: showTimePaginateConfig,
+    baseFilters: {},
   });
 };

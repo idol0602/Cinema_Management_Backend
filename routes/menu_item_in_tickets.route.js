@@ -10,22 +10,22 @@ import {
 
 const router = Router();
 
-router.get("/", controller.getAll);
-router.get("/:id", controller.getById);
+router.get("/", auth, authorize("STAFF", "CUSTOMER"), controller.getAll);
+router.get("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.getById);
 router.post(
   "/",
   auth,
-  authorize("STAFF", "ADMIN"),
+  authorize("STAFF", "CUSTOMER"),
   validate(createMenuItemInTicketSchema),
   controller.create
 );
 router.put(
   "/:id",
   auth,
-  authorize("STAFF", "ADMIN"),
+  authorize("STAFF", "CUSTOMER"),
   validate(updateMenuItemInTicketSchema),
   controller.update
 );
-router.delete("/:id", auth, authorize("STAFF", "ADMIN"), controller.remove);
+router.delete("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.remove);
 
 export default router;

@@ -23,6 +23,7 @@ import rateRoutes from "./routes/rate.route.js";
 import seatRoutes from "./routes/seat.route.js";
 import showTimesRoutes from "./routes/show_times.route.js";
 import showTimeSeatsRoutes from "./routes/show_time_seats.route.js";
+import agentRoutes from "./routes/agent.route.js";
 import slideRoutes from "./routes/slide.route.js";
 import ticketPricesRoutes from "./routes/ticket_prices.route.js";
 import ticketRoutes from "./routes/ticket.route.js";
@@ -75,6 +76,7 @@ app.use("/api/show-time-seats", showTimeSeatsRoutes);
 app.use("/api/slides", slideRoutes);
 app.use("/api/ticket-prices", ticketPricesRoutes);
 app.use("/api/tickets", ticketRoutes);
+app.use("/api/agent", agentRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Not found" });

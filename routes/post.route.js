@@ -13,17 +13,18 @@ const router = Router();
 router.get("/", controller.findAndPaginate);
 router.get("/all", controller.getAll);
 router.get("/:id", controller.getById);
+
 router.post(
   "/",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(createPostSchema),
   controller.create
 );
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(updatePostSchema),
   controller.update
 );

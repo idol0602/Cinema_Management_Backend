@@ -27,7 +27,11 @@ export const remove = async (id) => {
 };
 
 export const findAndPaginate = async (query) => {
-  return await paginate(supabase, "rooms", query, roomPaginateConfig, {
-    is_active: true,
+  return await paginate({
+    supabase,
+    table: "rooms",
+    query: query,
+    config: roomPaginateConfig,
+    baseFilters: {},
   });
 };

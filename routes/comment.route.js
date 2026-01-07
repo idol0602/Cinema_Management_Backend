@@ -6,13 +6,26 @@ import {
   updateCommentSchema,
 } from "../validators/comment.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
+import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
 router.get("/", controller.getAll);
 router.get("/:id", controller.getById);
-router.post("/", auth, validate(createCommentSchema), controller.create);
-router.put("/:id", auth, validate(updateCommentSchema), controller.update);
-router.delete("/:id", auth, controller.remove);
+router.post(
+  "/",
+  auth,
+  authorize("CUSTOMER"),
+  validate(createCommentSchema),
+  controller.create
+);
+router.put(
+  "/:id",
+  authorize("CUSTOMER"),
+  auth,
+  validate(updateCommentSchema),
+  controller.update
+);
+router.delete("/:id", auth, authorize("CUSTOMER", "ADMIN"), controller.remove);
 
 export default router;

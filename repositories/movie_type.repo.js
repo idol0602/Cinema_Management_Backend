@@ -17,10 +17,11 @@ export const remove = async (id) =>
   supabase.from("movie_types").delete().eq("id", id);
 
 export const findAndPaginate = async (query) => {
-  return await paginate(
+  return await paginate({
     supabase,
-    "movie_types",
-    query,
-    movieTypePaginateConfig
-  );
+    table: "movie_types",
+    query: query,
+    config: movieTypePaginateConfig,
+    baseFilters: {},
+  });
 };

@@ -12,17 +12,18 @@ const router = Router();
 
 router.get("/", controller.getAll);
 router.get("/:id", controller.getById);
+
 router.post(
   "/",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(createTicketPriceSchema),
   controller.create
 );
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(updateTicketPriceSchema),
   controller.update
 );

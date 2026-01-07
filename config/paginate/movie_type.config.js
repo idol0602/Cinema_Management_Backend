@@ -1,10 +1,8 @@
 export const movieTypePaginateConfig = {
   sortableColumns: ["type", "created_at"],
   searchableColumns: ["type"],
-  filterableColumns: {
-    type: true,
-  },
-  defaultSortBy: [["type", "ASC"]],
-  defaultLimit: 20,
+  filterableColumns: {},
+  defaultSortBy: [["created_at", "DESC"]],
+  defaultLimit: 10,
   maxLimit: 100,
 };

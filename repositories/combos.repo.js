@@ -23,7 +23,11 @@ export const remove = async (id) =>
   supabase.from("combos").update({ is_active: false }).eq("id", id);
 
 export const findAndPaginate = async (query) => {
-  return await paginate(supabase, "combos", query, comboPaginateConfig, {
-    is_active: true,
+  return await paginate({
+    supabase,
+    table: "combos",
+    query: query,
+    config: comboPaginateConfig,
+    baseFilters: {},
   });
 };

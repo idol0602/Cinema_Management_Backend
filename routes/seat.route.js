@@ -15,14 +15,14 @@ router.get("/:id", controller.getById);
 router.post(
   "/",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(createSeatSchema),
   controller.create
 );
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN", "STAFF"),
+  authorize("ADMIN"),
   validate(updateSeatSchema),
   controller.update
 );
