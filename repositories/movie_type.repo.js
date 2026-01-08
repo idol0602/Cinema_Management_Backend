@@ -14,7 +14,7 @@ export const update = async (id, data) =>
   supabase.from("movie_types").update(data).eq("id", id);
 
 export const remove = async (id) =>
-  supabase.from("movie_types").delete().eq("id", id);
+  supabase.from("movie_types").update({ is_active: false }).eq("id", id);
 
 export const findAndPaginate = async (query) => {
   return await paginate({

@@ -5,10 +5,6 @@ export const createOrderSchema = z.object({
   user_id: z.string().min(1),
   service_vat: z.number().default(10).optional(),
   total_price: z.number(),
-  purchased_at: z
-    .string()
-    .default(new Date(Date.now()).toISOString())
-    .optional(),
   created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
