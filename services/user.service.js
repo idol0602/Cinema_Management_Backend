@@ -23,3 +23,5 @@ export const update = (id, data) => repo.update(id, data);
 export const remove = (id) => repo.remove(id);
 
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
+
+export const checkLastAdmin = (id) => repo.checkLastAdmin(id);

@@ -44,3 +44,39 @@ export const findAndPaginate = async (query) => {
     baseFilters: {},
   });
 };
+
+export const checkLastAdmin = async (id) => {
+  try {
+    const { data: currentUser, error: userError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (userError) {
+      throw userError;
+    }
+
+    if (!currentUser || currentUser.role !== "ADMIN") {
+      return false;
+    }
+
+    const { count, error: countError } = await supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "ADMIN")
+      .eq("is_active", true)
+      .neq("id", id);
+
+    if (countError) {
+      throw countError;
+    }
+
+    const isLast = count === 0;
+
+    return isLast;
+  } catch (error) {
+    return false;
+  }
+};

@@ -1,5 +1,5 @@
 import * as service from "../services/user.service.js";
-import { success } from "../utils/response.js";
+import { success, fail } from "../utils/response.js";
 
 export const create = async (req, res, next) => {
   try {
@@ -35,6 +35,13 @@ export const getById = async (req, res, next) => {
 export const update = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const isLastAdmin = await service.checkLastAdmin(id);
+    if (isLastAdmin && req.body.role != "ADMIN") {
+      return fail(res, {
+        error: "last admin",
+        message: "can't update to another role",
+      });
+    }
     const { data, error } = await service.update(id, req.body);
     if (error) throw error;
     return success(res, data, "Update user successfully");
@@ -46,6 +53,13 @@ export const update = async (req, res, next) => {
 export const remove = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const isLastAdmin = await service.checkLastAdmin(id);
+    if (isLastAdmin) {
+      return fail(res, {
+        error: "last admin",
+        message: "can't delete",
+      });
+    }
     const { data, error } = await service.remove(id);
     if (error) throw error;
     return success(res, data, "Remove user successfully");
