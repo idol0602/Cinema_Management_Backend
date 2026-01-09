@@ -23,3 +23,28 @@ export const login = async (req, res, next) => {
     next(e);
   }
 };
+
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const { success: isSuccess, message } = await service.forgotPassword(email);
+    if (!isSuccess) {
+      return fail(res, { message: message });
+    }
+    return success(res, null, message);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { data, error } = await service.resetPassword(req.body);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Reset password successfully");
+  } catch (e) {
+    next(e);
+  }
+};

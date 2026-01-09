@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { v4 as uuid } from "uuid";
 import { env } from "../config/env.js";
 import * as userRepo from "../repositories/user.repo.js";
+import { sendMail } from "../utils/mail.js";
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -82,4 +83,55 @@ export const login = async ({ email, password }) => {
     data: { user: safeUser, token },
     error: null,
   };
+};
+
+export const forgotPassword = async (email) => {
+  const { data: user, error } = await userRepo.findByEmail(email);
+  if (!user || error) {
+    return {
+      success: false,
+      message: "Nếu email tồn tại, link reset sẽ được gửi",
+    };
+  }
+
+  const token = jwt.sign(
+    { userId: user.id, purpose: "reset-password" },
+    env.JWT_SECRET,
+    { expiresIn: "15m" }
+  );
+
+  const resetLink = `${
+    env.CLIENT_URL || process.env.CLIENT_URL
+  }/reset-password/${token}`;
+
+  const info = await sendMail({
+    to: user.email,
+    subject: "Reset mật khẩu",
+    html: `
+      <p>Bạn yêu cầu đặt lại mật khẩu</p>
+      <a href="${resetLink}">Đặt lại mật khẩu</a>
+      <p>Link hết hạn sau 15 phút</p>
+    `,
+  });
+
+  if (info.accepted.length > 0) {
+    return {
+      success: true,
+      message: "Link reset đã được gửi tới email",
+    };
+  } else {
+    return {
+      success: false,
+      message: "Có lỗi xảy ra",
+    };
+  }
+};
+
+export const resetPassword = async ({ token, newPassword }) => {
+  const decoded = jwt.verify(token, env.JWT_SECRET);
+  if (decoded.purpose !== "reset-password") {
+    throw new Error("Token không hợp lệ");
+  }
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  return await userRepo.changePassword(decoded.userId, hashedPassword);
 };

@@ -80,3 +80,10 @@ export const checkLastAdmin = async (id) => {
     return false;
   }
 };
+
+export const changePassword = async (id, newPassword) => {
+  return await supabase
+    .from("users")
+    .update({ password: newPassword })
+    .eq("id", id);
+};
