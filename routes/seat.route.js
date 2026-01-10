@@ -7,11 +7,15 @@ import {
 } from "../validators/seat.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { uploadExcel } from "../middlewares/upload.middleware.js";
 
 const router = Router();
 
-router.get("/", controller.getAll);
+router.get("/room/:id", controller.getSeatByRoomId);
 router.get("/:id", controller.getById);
+router.get("/all", controller.getAll);
+router.get("/", controller.findAndPaginate);
+
 router.post(
   "/",
   auth,
@@ -19,6 +23,15 @@ router.post(
   validate(createSeatSchema),
   controller.create
 );
+
+router.post(
+  "/import",
+  auth,
+  authorize("ADMIN"),
+  uploadExcel.single("file"),
+  controller.importFromExcel
+);
+
 router.put(
   "/:id",
   auth,
