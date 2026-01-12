@@ -28,7 +28,12 @@ export const findById = async (id) => {
 };
 
 export const update = async (id, data) => {
-  return supabase.from("users").update(data).eq("id", id);
+  return await supabase
+    .from("users")
+    .update(data)
+    .eq("id", id)
+    .select()
+    .single();
 };
 
 export const remove = async (id) => {

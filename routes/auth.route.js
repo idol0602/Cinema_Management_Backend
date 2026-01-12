@@ -6,6 +6,7 @@ import {
   loginSchema,
   resetPasswordSchema,
 } from "../validators/auth.schema.js";
+import { auth } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.post(
   validate(resetPasswordSchema),
   controller.resetPassword
 );
+router.put("/update-profile/:id", auth, controller.updateProfile);
 
 export default router;

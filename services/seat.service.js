@@ -10,7 +10,7 @@ export const remove = (id) => repo.remove(id);
 export const getSeatByRoomId = (roomId) => repo.getSeatByRoomId(roomId);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
 
-export const importFromExcel = async (filePath) => {
+export const importFromExcel = async (filePath, roomId) => {
   try {
     const workbook = xlsx.readFile(filePath);
     const sheetName = workbook.SheetNames[0];
@@ -20,7 +20,7 @@ export const importFromExcel = async (filePath) => {
 
     const seats = data.map((row) => ({
       id: uuidv4(),
-      room_id: row.room_id || row.RoomId,
+      room_id: roomId,
       seat_number: row.seat_number || row.SeatNumber,
       type: row.type || row.Type || "STANDARD",
       is_active: row.is_active !== undefined ? row.is_active : true,

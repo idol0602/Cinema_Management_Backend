@@ -116,5 +116,7 @@ export const importFromExcel = async (req, res, next) => {
       fs.unlinkSync(req.file.path);
     }
     next(e);
+  } finally {
+    fs.unlinkSync(req.file.path);
   }
 };

@@ -48,3 +48,19 @@ export const resetPassword = async (req, res, next) => {
     next(e);
   }
 };
+
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await service.updateProfile({
+      userId: id,
+      payload: req.body,
+    });
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Update profile successfully");
+  } catch (e) {
+    next(e);
+  }
+};

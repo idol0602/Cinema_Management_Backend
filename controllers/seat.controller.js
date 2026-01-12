@@ -1,5 +1,6 @@
 import * as service from "../services/seat.service.js";
 import { success, fail } from "../utils/response.js";
+import fs from "fs";
 
 export const create = async (req, res, next) => {
   try {
@@ -97,6 +98,7 @@ export const findAndPaginate = async (req, res, next) => {
 
 export const importFromExcel = async (req, res, next) => {
   try {
+    const { roomId } = req.body;
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -107,7 +109,17 @@ export const importFromExcel = async (req, res, next) => {
         },
       });
     }
-    const result = await service.importFromExcel(req.file.path);
+    if (!roomId) {
+      return res.status(400).json({
+        success: false,
+        message: "No room selected",
+        data: {
+          imported: 0,
+          skipped: 0,
+        },
+      });
+    }
+    const result = await service.importFromExcel(req.file.path, roomId);
 
     fs.unlinkSync(req.file.path);
 
@@ -125,5 +137,7 @@ export const importFromExcel = async (req, res, next) => {
     });
   } catch (e) {
     next(e);
+  } finally {
+    fs.unlinkSync(req.file.path);
   }
 };

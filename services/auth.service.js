@@ -135,3 +135,38 @@ export const resetPassword = async ({ token, newPassword }) => {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   return await userRepo.changePassword(decoded.userId, hashedPassword);
 };
+
+export const updateProfile = async ({ userId, payload }) => {
+  const hashedPassword = await bcrypt.hash(payload.password, 10);
+  const { password, ...updateData } = payload;
+
+  // Nếu password là "hidden password" thì không update password, chỉ update những field khác
+  const dataToUpdate =
+    password === "hidden password"
+      ? updateData
+      : {
+          ...payload,
+          password: hashedPassword,
+        };
+
+  const { data, error } = await userRepo.update(userId, dataToUpdate);
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (!data) {
+    const err = new Error("Failed to update user");
+    err.statusCode = 500;
+    return { data: null, error: err };
+  }
+
+  // Loại bỏ password trước khi trả về
+  const { password: _pw, ...safeUser } = data;
+  const token = generateToken(data);
+
+  return {
+    data: { user: safeUser, token },
+    error: null,
+  };
+};
