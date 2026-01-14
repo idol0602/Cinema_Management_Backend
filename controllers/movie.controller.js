@@ -39,6 +39,24 @@ export const getById = async (req, res, next) => {
   }
 };
 
+export const getByName = async (req, res, next) => {
+  try {
+    const { name } = req.query;
+    if (!name || typeof name !== "string") {
+      return res.status(400).json({
+        message: "Slug is required",
+      });
+    }
+    const { data, error } = await service.findByName(name);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Get movie successfully");
+  } catch (e) {
+    next(e);
+  }
+};
+
 export const update = async (req, res, next) => {
   try {
     const { id } = req.params;

@@ -19,12 +19,12 @@ export async function paginate({
   query = {},
   config,
   baseFilters = {},
+  joinTables = {},
 }) {
   if (!supabase) throw new Error("Supabase client is required");
   if (!table) throw new Error("Table name is required");
   if (!config)
     throw new Error(`Paginate config is required for table: ${table}`);
-
   /* =========================
    * 1. PAGINATION
    * ========================= */
@@ -47,50 +47,153 @@ export async function paginate({
   }
 
   /* =========================
-   * 3. INIT QUERY
+   * 3. HANDLE JOINED TABLE SEARCH
    * ========================= */
-  let q = supabase.from(table).select("*", { count: "exact" });
+  let modifiedQuery = { ...query };
+
+  if (query.search && query.searchBy && query.searchBy.includes(".")) {
+    const [searchTable, searchColumn] = query.searchBy.split(".");
+    // Query the joined table to get IDs
+    const { data: results, error: searchError } = await supabase
+      .from(searchTable)
+      .select("id")
+      .ilike(searchColumn, `%${query.search}%`);
+
+    if (searchError) {
+      return {
+        data: [],
+        error: searchError.message,
+        meta: {
+          totalItems: 0,
+          itemCount: 0,
+          itemsPerPage: limit,
+          totalPages: 0,
+          currentPage: page,
+        },
+      };
+    }
+
+    const joinedIds = results?.map((r) => r.id) || [];
+
+    if (joinedIds.length === 0) {
+      // No results found
+      return {
+        data: [],
+        error: null,
+        meta: {
+          totalItems: 0,
+          itemCount: 0,
+          itemsPerPage: limit,
+          totalPages: 0,
+          currentPage: page,
+        },
+        links: {
+          first: undefined,
+          previous: undefined,
+          current: `?page=${page}&limit=${limit}`,
+          next: undefined,
+          last: undefined,
+        },
+      };
+    }
+
+    // Get the foreign key for this table
+    const foreignKey = joinTables[searchTable];
+    if (!foreignKey) {
+      return {
+        data: [],
+        error: `Foreign key not defined for ${searchTable}`,
+        meta: {
+          totalItems: 0,
+          itemCount: 0,
+          itemsPerPage: limit,
+          totalPages: 0,
+          currentPage: page,
+        },
+      };
+    }
+
+    modifiedQuery = {
+      ...query,
+      search: undefined,
+      searchBy: undefined,
+      filter: {
+        ...(query.filter || {}),
+        [foreignKey]: joinedIds,
+      },
+    };
+  }
 
   /* =========================
-   * 4. BASE FILTERS (SYSTEM)
+   * 4. INIT QUERY - ADVANCED
+   * ========================= */
+  let selectStr = "*";
+
+  if (Object.keys(joinTables).length > 0) {
+    const joinSelects = Object.keys(joinTables).map((joinTable) => {
+      let fields = ["id"];
+
+      if (config.joinTableFields?.[joinTable]) {
+        fields = config.joinTableFields[joinTable];
+      }
+
+      return `${joinTable}(${fields.join(",")})`;
+    });
+    selectStr = `*, ${joinSelects.join(", ")}`;
+  }
+
+  let q = supabase.from(table).select(selectStr, { count: "exact" });
+
+  /* =========================
+   * 5. BASE FILTERS (SYSTEM)
    * ========================= */
   Object.entries(baseFilters).forEach(([key, value]) => {
     q = q.eq(key, value);
   });
 
   /* =========================
-   * 5. USER FILTERS
+   * 6. USER FILTERS (using modifiedQuery)
    * ========================= */
-  if (query.filter) {
-    Object.entries(query.filter).forEach(([column, condition]) => {
+  if (modifiedQuery.filter) {
+    Object.entries(modifiedQuery.filter).forEach(([column, condition]) => {
       if (!config.filterableColumns[column]) return;
 
-      // operator-based filter
-      if (typeof condition === "object" && !Array.isArray(condition)) {
+      // ✅ CASE 1: filter[field]=[A,B,C]  => IN
+      if (Array.isArray(condition)) {
+        q = applyFilterOperator(q, column, "$in", condition);
+        return;
+      }
+
+      // ✅ CASE 2: filter[field][$gt]=..., $in, $lte...
+      if (typeof condition === "object" && condition !== null) {
         Object.entries(condition).forEach(([operator, value]) => {
           q = applyFilterOperator(q, column, operator, value);
         });
-      } else {
-        // simple equality
-        q = q.eq(column, convertValue(condition));
+        return;
       }
+
+      // ✅ CASE 3: filter[field]=A
+      q = q.eq(column, convertValue(condition));
     });
   }
 
   /* =========================
-   * 6. SEARCH
+   * 7. SEARCH (direct columns only, joined tables already handled)
    * ========================= */
-  if (query.search && config.searchableColumns.length > 0) {
-    const searchColumns = query.searchBy
-      ? (Array.isArray(query.searchBy)
-          ? query.searchBy
-          : [query.searchBy]
+  if (modifiedQuery.search && config.searchableColumns.length > 0) {
+    const searchColumns = modifiedQuery.searchBy
+      ? (Array.isArray(modifiedQuery.searchBy)
+          ? modifiedQuery.searchBy
+          : [modifiedQuery.searchBy]
         ).filter((c) => config.searchableColumns.includes(c))
       : config.searchableColumns;
 
-    if (searchColumns.length > 0) {
-      const orCondition = searchColumns
-        .map((c) => `${c}.ilike.%${query.search}%`)
+    // Only handle direct column searches (no dots)
+    const directSearches = searchColumns.filter((c) => !c.includes("."));
+
+    if (directSearches.length > 0) {
+      const orCondition = directSearches
+        .map((c) => `${c}.ilike.%${modifiedQuery.search}%`)
         .join(",");
 
       q = q.or(orCondition);
@@ -98,7 +201,7 @@ export async function paginate({
   }
 
   /* =========================
-   * 7. APPLY SORT
+   * 8. APPLY SORT
    * ========================= */
   sortBy.forEach(([column, order]) => {
     q = q.order(column, {
@@ -107,7 +210,7 @@ export async function paginate({
   });
 
   /* =========================
-   * 8. EXECUTE QUERY
+   * 9. EXECUTE QUERY
    * ========================= */
   const { data, error, count } = await q.range(offset, offset + limit - 1);
 
@@ -162,8 +265,16 @@ function applyFilterOperator(query, column, operator, value) {
       return query.lt(column, v);
     case "$lte":
       return query.lte(column, v);
-    case "$in":
-      return query.in(column, Array.isArray(v) ? v : [v]);
+    case "$in": {
+      let values = v;
+      if (typeof v === "string") {
+        values = v.split(",").map((x) => x.trim());
+      }
+      if (!Array.isArray(values)) {
+        values = [values];
+      }
+      return query.in(column, values);
+    }
     case "$contains":
     case "$ilike":
       return query.ilike(column, `%${v}%`);

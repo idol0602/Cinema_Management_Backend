@@ -21,6 +21,15 @@ export const findById = async (id) => {
     .eq("id", id)
     .eq("is_active", true);
 };
+
+export const findByName = async (name) => {
+  return await supabase
+    .from("movies")
+    .select("*")
+    .ilike("title", `%${name}%`)
+    .eq("is_active", true);
+};
+
 export const update = async (id, data) => {
   return await supabase.from("movies").update(data).eq("id", id);
 };

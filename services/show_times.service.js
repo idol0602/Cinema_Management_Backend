@@ -7,3 +7,4 @@ export const findById = (id) => repo.findById(id);
 export const update = (id, data) => repo.update(id, data);
 export const remove = (id) => repo.remove(id);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
+export const findByRoomId = (roomId) => repo.findByRoomId(roomId);

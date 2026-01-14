@@ -25,6 +25,19 @@ export const getAll = async (req, res, next) => {
   }
 };
 
+export const getByRoomId = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await service.findByRoomId(id);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Get show times successfully");
+  } catch (e) {
+    next(e);
+  }
+};
+
 export const getById = async (req, res, next) => {
   try {
     const { id } = req.params;

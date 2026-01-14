@@ -11,6 +11,7 @@ import { uploadExcel } from "../middlewares/upload.middleware.js";
 
 const router = Router();
 
+router.get("/name", controller.getByName);
 router.get("/", controller.findAndPaginate);
 router.get("/all", controller.getAll);
 router.get("/:id", controller.getById);
