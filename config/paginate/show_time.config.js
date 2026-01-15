@@ -7,6 +7,7 @@ export const showTimePaginateConfig = {
     day_type: true,
     is_active: true,
     start_time: true,
+    end_time: true,
   },
   defaultSortBy: [["created_at", "DESC"]],
   defaultLimit: 10,

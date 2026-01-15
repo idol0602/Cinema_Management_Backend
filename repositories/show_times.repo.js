@@ -47,3 +47,13 @@ export const findAndPaginate = async (query) => {
 export const findByRoomId = async (room_id) => {
   return await supabase.from("show_times").select("*").eq("room_id", room_id);
 };
+
+export const findByRoomIdsAndDates = async (roomIds, startDate, endDate) => {
+  return await supabase
+    .from("show_times")
+    .select("*")
+    .in("room_id", roomIds)
+    .eq("is_active", true)
+    .gte("start_time::date", startDate)
+    .lte("end_time::date", endDate);
+};

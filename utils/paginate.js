@@ -28,11 +28,24 @@ export async function paginate({
   /* =========================
    * 1. PAGINATION
    * ========================= */
+  // const page = Math.max(1, Number(query.page) || 1);
+  // const limit = Math.min(
+  //   Math.max(1, Number(query.limit) || config.defaultLimit),
+  //   config.maxLimit
+  // );
+  // const offset = (page - 1) * limit;
+
   const page = Math.max(1, Number(query.page) || 1);
-  const limit = Math.min(
-    Math.max(1, Number(query.limit) || config.defaultLimit),
-    config.maxLimit
-  );
+
+  // If limit is not provided, fetch all records (no limit)
+  const isNoLimit =
+    query.limit === undefined || query.limit === null || query.limit === "";
+  const limit = isNoLimit
+    ? config.maxLimit * 1000 // Very large number to fetch all
+    : Math.min(
+        Math.max(1, Number(query.limit) || config.defaultLimit),
+        config.maxLimit
+      );
   const offset = (page - 1) * limit;
 
   /* =========================

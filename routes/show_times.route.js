@@ -10,6 +10,7 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
+router.get("/rooms-and-date", controller.findByRoomIdsAndDates);
 router.get("/room/:id", controller.getByRoomId);
 router.get("/", controller.findAndPaginate);
 router.get("/all", controller.getAll);

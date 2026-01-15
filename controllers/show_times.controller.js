@@ -92,3 +92,16 @@ export const findAndPaginate = async (req, res, next) => {
     next(e);
   }
 };
+
+export const findByRoomIdsAndDates = async (req, res, next) => {
+  try {
+    console.log(req.body);
+    const { data, error } = await service.create(req.body);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Get show times successfully", 201);
+  } catch (e) {
+    next(e);
+  }
+};
