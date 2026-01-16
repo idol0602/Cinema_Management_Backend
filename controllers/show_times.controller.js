@@ -95,12 +95,23 @@ export const findAndPaginate = async (req, res, next) => {
 
 export const findByRoomIdsAndDates = async (req, res, next) => {
   try {
-    console.log(req.body);
     const { data, error } = await service.create(req.body);
     if (error) {
       return fail(res, error);
     }
     return success(res, data, "Get show times successfully", 201);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const bulkCreate = async (req, res, next) => {
+  try {
+    const { data, error } = await service.bulkCreate(req.body);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Create show time successfully", 201);
   } catch (e) {
     next(e);
   }

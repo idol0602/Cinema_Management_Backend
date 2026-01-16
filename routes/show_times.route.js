@@ -4,6 +4,7 @@ import { validate } from "../middlewares/validate.middleware.js";
 import {
   createShowTimeSchema,
   updateShowTimeSchema,
+  bulkCreateShowTimeSchema,
 } from "../validators/show_times.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
@@ -15,6 +16,14 @@ router.get("/room/:id", controller.getByRoomId);
 router.get("/", controller.findAndPaginate);
 router.get("/all", controller.getAll);
 router.get("/:id", controller.getById);
+
+router.post(
+  "/bulk-create",
+  auth,
+  authorize("ADMIN"),
+  validate(bulkCreateShowTimeSchema),
+  controller.bulkCreate
+);
 router.post(
   "/",
   auth,

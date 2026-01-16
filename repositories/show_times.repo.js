@@ -57,3 +57,7 @@ export const findByRoomIdsAndDates = async (roomIds, startDate, endDate) => {
     .gte("start_time::date", startDate)
     .lte("end_time::date", endDate);
 };
+
+export const bulkCreate = async (showTimes) => {
+  return await supabase.from("show_times").insert(showTimes);
+};

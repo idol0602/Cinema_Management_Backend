@@ -11,3 +11,4 @@ export const createShowTimeSchema = z.object({
 });
 
 export const updateShowTimeSchema = createShowTimeSchema.partial();
+export const bulkCreateShowTimeSchema = createShowTimeSchema.array();

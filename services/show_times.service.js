@@ -10,3 +10,13 @@ export const findAndPaginate = (query) => repo.findAndPaginate(query);
 export const findByRoomId = (roomId) => repo.findByRoomId(roomId);
 export const findByRoomIdsAndDates = (roomIds, startDate, endDate) =>
   repo.findByRoomIdsAndDates(roomIds, startDate, endDate);
+export const bulkCreate = async (showTimes) => {
+  const showTimeWithId = showTimes.map((showTime) => {
+    return {
+      id: uuidv4(),
+      ...showTime,
+    };
+  });
+
+  return await repo.bulkCreate(showTimeWithId);
+};

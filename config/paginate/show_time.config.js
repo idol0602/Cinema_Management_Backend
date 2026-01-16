@@ -2,7 +2,7 @@ export const showTimePaginateConfig = {
   sortableColumns: ["start_time", "end_time", "created_at"],
   searchableColumns: ["movies.title"],
   filterableColumns: {
-    movie_id: true, // Allow filtering by movie_id (from joined table search)
+    movie_id: true,
     room_id: true,
     day_type: true,
     is_active: true,
