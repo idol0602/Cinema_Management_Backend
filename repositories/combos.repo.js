@@ -37,5 +37,10 @@ export const findAndPaginate = async (query) => {
     query: query,
     config: comboPaginateConfig,
     baseFilters: {},
+    joinTables: {
+      combo_movies: "combo_id",
+      combos_events: "combo_id",
+      combo_items: "combo_id",
+    },
   });
 };
