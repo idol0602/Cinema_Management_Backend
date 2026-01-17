@@ -25,3 +25,7 @@ export const remove = (id) => repo.remove(id);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
 
 export const checkLastAdmin = (id) => repo.checkLastAdmin(id);
+
+export const heartbeat = (payload) => repo.heartbeat(payload);
+export const online = (userId) => repo.online(userId);
+export const offline = (userId) => repo.offline(userId);

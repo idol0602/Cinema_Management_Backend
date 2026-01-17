@@ -14,6 +14,7 @@ router.get("/", auth, authorize("ADMIN"), controller.findAndPaginate);
 router.get("/all", auth, authorize("ADMIN"), controller.getAll);
 router.get("/:id", auth, authorize("ADMIN"), controller.getById);
 
+router.post("/heartbeat/:id", controller.heartbeat);
 router.post(
   "/",
   auth,
@@ -22,6 +23,8 @@ router.post(
   controller.create
 );
 
+router.put("/online/:id", controller.online);
+router.put("/offline/:id", controller.offline);
 router.put(
   "/:id",
   auth,

@@ -9,7 +9,7 @@ const generateToken = (user) => {
   return jwt.sign(
     { id: user.id, role: user.role, email: user.email },
     env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN }
+    { expiresIn: env.JWT_EXPIRES_IN },
   );
 };
 
@@ -69,6 +69,13 @@ export const login = async ({ email, password }) => {
     return { data: null, error: err };
   }
 
+  const { data: onlineData } = await userRepo.isOnline(user.id);
+  if (onlineData && onlineData.length > 0 && onlineData[0].is_online) {
+    const err = new Error("Your account is using by another");
+    err.statusCode = 400;
+    return { data: null, error: err };
+  }
+
   const match = await bcrypt.compare(password, user.password);
   if (!match) {
     const err = new Error("Invalid email or password");
@@ -97,7 +104,7 @@ export const forgotPassword = async (email) => {
   const token = jwt.sign(
     { userId: user.id, purpose: "reset-password" },
     env.JWT_SECRET,
-    { expiresIn: "15m" }
+    { expiresIn: "15m" },
   );
 
   const resetLink = `${

@@ -92,3 +92,31 @@ export const changePassword = async (id, newPassword) => {
     .update({ password: newPassword })
     .eq("id", id);
 };
+
+export const heartbeat = async (payload) => {
+  return await supabase.rpc("heartbeat_user", payload);
+};
+
+export const online = async (userId) => {
+  return await supabase
+    .from("users")
+    .update({
+      is_online: true,
+      last_seen: new Date().toISOString(),
+    })
+    .eq("id", userId)
+    .single();
+};
+
+export const offline = async (userId) => {
+  return await supabase
+    .from("users")
+    .update({
+      is_online: false,
+    })
+    .eq("id", userId);
+};
+
+export const isOnline = async (userId) => {
+  return await supabase.from("users").select("is_online").eq("id", userId);
+};

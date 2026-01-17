@@ -83,3 +83,43 @@ export const findAndPaginate = async (req, res, next) => {
     next(e);
   }
 };
+
+export const heartbeat = async (req, res, next) => {
+  try {
+    const { id: userId } = req.params;
+    const result = await service.heartbeat({ uid: userId });
+    if (result.error) {
+      throw result.error;
+    }
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("Heartbeat exception:", error);
+    res.status(500).json({ error: error.message || "Heartbeat failed" });
+  }
+};
+
+export const online = async (req, res, next) => {
+  try {
+    const { id: userId } = req.params;
+    const result = await service.online(userId);
+    if (result.error) throw result.error;
+    res.sendStatus(200);
+  } catch (error) {
+    res.sendStatus(500);
+  }
+};
+
+export const offline = async (req, res, next) => {
+  try {
+    const { id: userId } = req.params;
+    const result = await service.offline(userId);
+    if (result.error) {
+      console.error("Offline error:", result.error);
+      throw result.error;
+    }
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("Offline exception:", error);
+    res.status(500).json({ error: error.message || "Offline failed" });
+  }
+};
