@@ -27,6 +27,8 @@ import agentRoutes from "./routes/agent.route.js";
 import slideRoutes from "./routes/slide.route.js";
 import ticketPricesRoutes from "./routes/ticket_prices.route.js";
 import ticketRoutes from "./routes/ticket.route.js";
+import momoRoutes from "./routes/payment/momo.route.js";
+import vnpayRoutes from "./routes/payment/vnpay.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -39,7 +41,7 @@ app.set("query parser", (str) =>
     comma: true,
     parseArrays: true,
     allowPrototypes: false,
-  })
+  }),
 );
 app.use(helmet());
 app.use(cors());
@@ -77,6 +79,9 @@ app.use("/api/slides", slideRoutes);
 app.use("/api/ticket-prices", ticketPricesRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/agent", agentRoutes);
+
+app.use("/api/payment/momo", momoRoutes);
+app.use("/api/payment/vnpay", vnpayRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Not found" });

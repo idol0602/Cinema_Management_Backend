@@ -1,0 +1,9 @@
+export const momoConfig = {
+  MOMO_PARTNER_CODE: process.env.MOMO_PARTNER_CODE,
+  MOMO_ACCESS_KEY: process.env.MOMO_ACCESS_KEY,
+  MOMO_SECRET_KEY: process.env.MOMO_SECRET_KEY,
+  MOMO_REDIRECT_URL: process.env.MOMO_REDIRECT_URL,
+  MOMO_IPN_URL: process.env.MOMO_IPN_URL,
+  MOMO_REQUEST_TYPE: process.env.MOMO_REQUEST_TYPE,
+  MOMO_ENDPOINT: process.env.MOMO_ENDPOINT,
+};

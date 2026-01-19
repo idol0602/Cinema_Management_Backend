@@ -1,5 +1,6 @@
-import supabase from "@supabase/supabase-js";
-import { paginate } from "../utils/paginate";
+// Backend/repositories/order.repo.js
+import { supabase } from "../config/supabase.js"; // ✅ ĐÚNG - import từ config
+import { paginate } from "../utils/paginate.js";
 
 export const create = async (order) => {
   return await supabase.from("orders").insert(order).single();
@@ -15,6 +16,7 @@ export const findAll = async () => {
 export const findById = async (id) => {
   return await supabase.from("orders").select("*").eq("id", id);
 };
+
 export const update = async (id, data) => {
   return await supabase.from("orders").update(data).eq("id", id);
 };
