@@ -14,6 +14,21 @@ export const createPayment = async (req, res) => {
 };
 
 export const callbackResult = (req, res) => {
-  console.log("RETURN URL:", req.query);
-  res.send("Payment callback received");
+  try {
+    const { vnp_ResponseCode, vnp_TxnRef, vnp_TransactionNo, vnp_Amount } =
+      req.query;
+
+    const status = service.getPaymentStatus(vnp_ResponseCode);
+
+    return res.status(200).json({
+      orderId: vnp_TxnRef,
+      resultCode: vnp_ResponseCode,
+      status,
+      transId: vnp_TransactionNo,
+      amount: vnp_Amount,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
 };

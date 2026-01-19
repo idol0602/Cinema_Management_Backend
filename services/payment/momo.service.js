@@ -1,5 +1,14 @@
+// Backend/services/payment/momo.service.js
 import crypto from "crypto";
 import { momoConfig } from "../../config/payment/momo.js";
+
+const MOMO_RESULT_CODE_MAP = {
+  0: "PAID", // Thành công
+  1001: "FAILED", // Không đủ tiền
+  1003: "EXPIRED", // Timeout auto-cancel
+  1005: "EXPIRED", // Link / QR hết hạn
+  1006: "CANCELLED", // User từ chối thanh toán
+};
 
 export const createPayment = async ({ orderId, amount }) => {
   try {
@@ -75,4 +84,8 @@ export const createPayment = async ({ orderId, amount }) => {
       message: error.message || "create payment link failed",
     };
   }
+};
+
+export const getPaymentStatus = (resultCode) => {
+  return MOMO_RESULT_CODE_MAP[resultCode] || "FAILED";
 };

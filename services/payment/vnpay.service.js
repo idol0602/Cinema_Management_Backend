@@ -1,6 +1,14 @@
 import { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat } from "vnpay";
 import { vnpayConfig } from "../../config/payment/vnpay.js";
 
+const VNPAY_RESULT_CODE_MAP = {
+  "00": "PAID", // Giao dịch thành công
+  11: "EXPIRED", // Hết hạn chờ thanh toán
+  24: "CANCELLED", // User hủy giao dịch
+  51: "FAILED", // Không đủ số dư
+  65: "FAILED", // Vượt hạn mức
+};
+
 export const createPayment = async ({ orderId, amount }) => {
   try {
     const money = Number(amount);
@@ -38,4 +46,8 @@ export const createPayment = async ({ orderId, amount }) => {
       message: error.message || "create payment link failed",
     };
   }
+};
+
+export const getPaymentStatus = (resultCode) => {
+  return VNPAY_RESULT_CODE_MAP[resultCode] || "FAILED";
 };
