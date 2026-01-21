@@ -1,10 +1,12 @@
 export const ticketPaginateConfig = {
-  sortableColumns: ["title", "created_at"],
-  searchableColumns: ["title", "content"],
+  sortableColumns: [],
+  searchableColumns: [],
   filterableColumns: {
-    is_active: true,
+    order_id: true,
+    ticket_price_id: true,
+    showtime_seat_id: true,
   },
-  defaultSortBy: [["created_at", "DESC"]],
+  defaultSortBy: [["id", "DESC"]],
   defaultLimit: 10,
   maxLimit: 50,
 };

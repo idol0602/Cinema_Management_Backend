@@ -10,21 +10,27 @@ import {
 
 const router = Router();
 
-router.get("/", auth, authorize("STAFF", "CUSTOMER"), controller.getAll);
+router.get(
+  "/",
+  auth,
+  authorize("STAFF", "CUSTOMER"),
+  controller.findAndPaginate,
+);
+router.get("/all", auth, authorize("STAFF", "CUSTOMER"), controller.getAll);
 router.get("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.getById);
 router.post(
   "/",
   auth,
   authorize("STAFF", "CUSTOMER"),
   validate(createMenuItemInTicketSchema),
-  controller.create
+  controller.create,
 );
 router.put(
   "/:id",
   auth,
   authorize("STAFF", "CUSTOMER"),
   validate(updateMenuItemInTicketSchema),
-  controller.update
+  controller.update,
 );
 router.delete("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.remove);
 

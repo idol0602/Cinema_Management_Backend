@@ -1,13 +1,15 @@
 import { z } from "zod";
 
 const eventBaseSchema = z.object({
-  name: z.string().min(1).optional(),
+  name: z.string().min(1),
   description: z.string().optional(),
   start_date: z.string().min(1),
   end_date: z.string().min(1),
   image: z.string().optional(),
+  event_type_id: z.string().min(1), // Reference to event_types table
+  only_at_counter: z.boolean().default(false).optional(),
   is_active: z.boolean().default(true).optional(),
-  created_at: z.string().optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 const withDateRangeRefine = (schema) =>

@@ -7,7 +7,6 @@ export const createShowTimeSeatSchema = z.object({
     .enum(["AVAILABLE", "HOLDING", "BOOKED", "FIXING"])
     .default("AVAILABLE")
     .optional(),
-  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateShowTimeSeatSchema = createShowTimeSeatSchema.partial();

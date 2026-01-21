@@ -7,7 +7,11 @@ export const create = async (payload) => {
 };
 
 export const findAll = async () => {
-  return await supabase.from("show_times").select("*").eq("is_active", true);
+  return await supabase
+    .from("show_times")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
 };
 
 export const findById = async (id) => {

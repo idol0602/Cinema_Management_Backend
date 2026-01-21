@@ -10,21 +10,22 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
-router.get("/", auth, controller.getAll);
+router.get("/", auth, controller.findAndPaginate);
+router.get("/all", auth, controller.getAll);
 router.get("/:id", auth, controller.getById);
 router.post(
   "/",
   auth,
   authorize("CUSTOMER", "STAFF"),
   validate(createTicketSchema),
-  controller.create
+  controller.create,
 );
 router.put(
   "/:id",
   auth,
   authorize("CUSTOMER", "STAFF"),
   validate(updateTicketSchema),
-  controller.update
+  controller.update,
 );
 router.delete("/:id", auth, authorize("CUSTOMER", "STAFF"), controller.remove);
 

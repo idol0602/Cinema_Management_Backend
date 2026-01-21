@@ -15,7 +15,17 @@ const generateToken = (user) => {
 
 // actualy dont use in dashboard because admin create user, only login
 export const register = async (payload) => {
-  const { name, email, phone, password, role } = payload;
+  const {
+    name,
+    email,
+    phone,
+    password,
+    role,
+    is_online,
+    last_seen,
+    created_at,
+    is_active,
+  } = payload;
 
   const { data: exists, error: findError } = await userRepo.findByEmail(email);
 
@@ -35,7 +45,11 @@ export const register = async (payload) => {
     email,
     phone,
     password: hashedPassword,
-    role: role || "CUSTOMER",
+    role,
+    is_online,
+    last_seen,
+    created_at,
+    is_active,
   };
 
   const { data, error } = await userRepo.create(userToCreate);

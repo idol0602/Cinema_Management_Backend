@@ -10,7 +10,8 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
-router.get("/", controller.getAll);
+router.get("/", controller.findAndPaginate);
+router.get("/all", controller.getAll);
 router.get("/:id", controller.getById);
 
 router.post(
@@ -18,14 +19,14 @@ router.post(
   auth,
   authorize("ADMIN"),
   validate(createTicketPriceSchema),
-  controller.create
+  controller.create,
 );
 router.put(
   "/:id",
   auth,
   authorize("ADMIN"),
   validate(updateTicketPriceSchema),
-  controller.update
+  controller.update,
 );
 router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
 

@@ -7,8 +7,8 @@ const discountBaseSchema = z.object({
   discount_percent: z.number().optional(),
   valid_from: z.string().min(1),
   valid_to: z.string().min(1),
-  is_active: z.boolean().optional(),
-  created_at: z.string().optional(),
+  is_active: z.boolean().default(true).optional(),
+  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 // 👇 QUAN TRỌNG: dùng ZodTypeAny

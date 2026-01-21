@@ -1,4 +1,6 @@
 import { supabase } from "../config/supabase.js";
+import { comboItemPaginateConfig } from "../config/paginate/combo_item.config.js";
+import { paginate } from "../utils/paginate.js";
 
 export const create = async (item) => {
   return await supabase.from("combo_items").insert(item).single();
@@ -26,4 +28,14 @@ export const remove = async (id) => {
     .from("combo_items")
     .update({ is_active: false })
     .eq("id", id);
+};
+
+export const findAndPaginate = async (query) => {
+  return await paginate({
+    supabase,
+    table: "combo_items",
+    query: query,
+    config: comboItemPaginateConfig,
+    baseFilters: {},
+  });
 };

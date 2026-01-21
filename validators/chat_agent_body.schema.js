@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 
 export const chatWithAgentSchema = z.object({
   question: z.string().min(1),

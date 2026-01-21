@@ -10,7 +10,7 @@ export const comboPaginateConfig = {
 
   joinTableFields: {
     combo_movies: ["id", "movie_id"],
-    combos_events: ["id", "event_id"],
+    combo_events: ["id", "event_id"],
     combo_items: ["id", "menu_item_id", "quantity", "unit_price", "is_active"],
   },
 };

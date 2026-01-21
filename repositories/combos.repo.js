@@ -7,7 +7,11 @@ export const create = async (combo) => {
 };
 
 export const findAll = async () => {
-  return await supabase.from("combos").select("*").eq("is_active", true);
+  return await supabase
+    .from("combos")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
 };
 
 export const findById = async (id) => {
@@ -39,7 +43,7 @@ export const findAndPaginate = async (query) => {
     baseFilters: {},
     joinTables: {
       combo_movies: "combo_id",
-      combos_events: "combo_id",
+      combo_events: "combo_id",
       combo_items: "combo_id",
     },
   });

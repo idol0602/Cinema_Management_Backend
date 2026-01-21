@@ -62,8 +62,21 @@ export const findAndPaginate = async (req, res, next) => {
       data: result.data,
       meta: result.meta,
       links: result.links,
-      message: "Get posts successfully",
+      message: "Get orders successfully",
     });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const remove = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await service.remove(id);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Delete order successfully");
   } catch (e) {
     next(e);
   }

@@ -9,7 +9,7 @@ export const createMovieSchema = z.object({
     .string()
     .default(new Date(Date.now()).toISOString())
     .optional(),
-  duration: z.number().int().gt(45).optional(),
+  duration: z.number().int().gt(45).default(120).optional(),
   rating: z.number().min(0).max(10).default(0).optional(),
   image: z.string().optional(),
   thumbnail: z.string().optional(),

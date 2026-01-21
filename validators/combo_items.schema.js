@@ -3,10 +3,9 @@ import { z } from "zod";
 export const createComboItemSchema = z.object({
   combo_id: z.string().min(1),
   menu_item_id: z.string().min(1),
-  quantity: z.number().int().min(1).default(1).optional(),
-  unit_price: z.number(),
+  quantity: z.number().int().min(1),
+  unit_price: z.number().gt(0),
   is_active: z.boolean().default(true).optional(),
-  created_at: z.string().default(new Date().toISOString()).optional(),
 });
 
 export const updateComboItemSchema = createComboItemSchema.partial();

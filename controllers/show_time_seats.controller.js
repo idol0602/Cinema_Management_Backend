@@ -74,3 +74,19 @@ export const getStatusSeat = async (req, res, next) => {
     next(e);
   }
 };
+
+export const findAndPaginate = async (req, res, next) => {
+  try {
+    const { data, error } = await service.findAndPaginate(req.query);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(
+      res,
+      data,
+      "Get show time seats with pagination successfully",
+    );
+  } catch (e) {
+    next(e);
+  }
+};

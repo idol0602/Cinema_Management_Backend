@@ -19,14 +19,15 @@ router.post(
   auth,
   authorize("STAFF", "CUSTOMER"),
   validate(createOrderSchema),
-  controller.create
+  controller.create,
 );
 router.put(
   "/:id",
   auth,
   authorize("STAFF", "CUSTOMER"),
   validate(updateOrderSchema),
-  controller.update
+  controller.update,
 );
+router.delete("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.remove);
 
 export default router;

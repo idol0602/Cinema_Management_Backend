@@ -11,12 +11,16 @@ export const findByEmail = async (email) => {
     .single();
 };
 
-export const create = async (userToCreate) => {
-  return await supabase.from("users").insert(userToCreate).select().single();
+export const create = async (payload) => {
+  return await supabase.from("users").insert(payload).select().single();
 };
 
 export const findAll = async () => {
-  return await supabase.from("users").select("*").eq("is_active", true);
+  return await supabase
+    .from("users")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
 };
 
 export const findById = async (id) => {

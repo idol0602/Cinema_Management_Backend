@@ -1,13 +1,17 @@
 import { supabase } from "../config/supabase.js";
+import { seatPaginationConfig } from "../config/paginate/seat.config.js";
 import { paginate } from "../utils/paginate.js";
-import { seatPagiantionConfig } from "../config/paginate/seat.config.js";
 
 export const create = async (payload) => {
   return await supabase.from("seats").insert(payload).single();
 };
 
 export const findAll = async () => {
-  return await supabase.from("seats").select("*").eq("is_active", true);
+  return await supabase
+    .from("seats")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
 };
 
 export const findById = async (id) => {
@@ -36,7 +40,7 @@ export const findAndPaginate = async (query) => {
     supabase,
     table: "seats",
     query: query,
-    config: seatPagiantionConfig,
+    config: seatPaginationConfig,
     baseFilters: {},
   });
 };

@@ -7,11 +7,20 @@ export const create = async (payload) => {
 };
 
 export const findAll = async () => {
-  return await supabase.from("movie_types").select("*");
+  return await supabase
+    .from("movie_types")
+    .select("*")
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
 };
 
 export const findById = async (id) => {
-  return await supabase.from("movie_types").select("*").eq("id", id).single();
+  return await supabase
+    .from("movie_types")
+    .select("*")
+    .eq("id", id)
+    .eq("is_active", true)
+    .single();
 };
 
 export const update = async (id, data) => {

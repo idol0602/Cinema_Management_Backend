@@ -1,4 +1,4 @@
-export const seatPagiantionConfig = {
+export const seatPaginationConfig = {
   sortableColumns: ["seat_number"],
   searchableColumns: ["seat_number"],
   filterableColumns: {

@@ -3,7 +3,6 @@ export const postPaginateConfig = {
   searchableColumns: ["title", "content"],
   filterableColumns: {
     is_active: true,
-    created_at: true,
   },
   defaultSortBy: [["created_at", "DESC"]],
   defaultLimit: 10,

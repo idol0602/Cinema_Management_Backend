@@ -10,21 +10,22 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
-router.get("/", controller.getAll);
+router.get("/", controller.findAndPaginate);
+router.get("/all", controller.getAll);
 router.get("/:id", controller.getById);
 router.post(
   "/",
   auth,
   authorize("ADMIN"),
   validate(createComboMovieSchema),
-  controller.create
+  controller.create,
 );
 router.put(
   "/:id",
   auth,
   authorize("ADMIN"),
   validate(updateComboMovieSchema),
-  controller.update
+  controller.update,
 );
 router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
 
