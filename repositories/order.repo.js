@@ -22,10 +22,6 @@ export const update = async (id, data) => {
   return await supabase.from("orders").update(data).eq("id", id);
 };
 
-export const remove = async (id) => {
-  return await supabase.from("orders").delete().eq("id", id);
-};
-
 export const findAndPaginate = async (query) => {
   return await paginate({
     supabase,

@@ -22,7 +22,7 @@ export const importFromExcel = async (filePath, roomId) => {
       id: uuidv4(),
       room_id: roomId,
       seat_number: row.seat_number || row.SeatNumber,
-      type: row.type || row.Type || "STANDARD",
+      type: row.type || row.Type,
       is_active: row.is_active !== undefined ? row.is_active : true,
       created_at: new Date().toISOString(),
     }));

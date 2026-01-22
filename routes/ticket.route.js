@@ -27,6 +27,5 @@ router.put(
   validate(updateTicketSchema),
   controller.update,
 );
-router.delete("/:id", auth, authorize("CUSTOMER", "STAFF"), controller.remove);
 
 export default router;

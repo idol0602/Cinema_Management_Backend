@@ -7,7 +7,6 @@ export const authorize =
       return res.sendStatus(401);
     }
     const role = await service.findById(req.user.role);
-    console.log(role);
     if (!roles.includes(role.data.name)) {
       return res.sendStatus(403);
     }

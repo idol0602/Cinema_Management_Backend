@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { validate } from "../middlewares/validate.middleware";
+import { validate } from "../middlewares/validate.middleware.js";
 import * as controller from "../controllers/order.controller.js";
-import { auth } from "../middlewares/auth.middleware";
-import { authorize } from "../middlewares/authorize.middleware";
+import { auth } from "../middlewares/auth.middleware.js";
+import { authorize } from "../middlewares/authorize.middleware.js";
 import {
   createOrderSchema,
   updateOrderSchema,
-} from "../validators/order.schema";
+} from "../validators/order.schema.js";
 
 const router = Router();
 
@@ -28,6 +28,5 @@ router.put(
   validate(updateOrderSchema),
   controller.update,
 );
-router.delete("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.remove);
 
 export default router;

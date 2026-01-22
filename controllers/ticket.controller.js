@@ -51,18 +51,6 @@ export const update = async (req, res, next) => {
   }
 };
 
-export const remove = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { data, error } = await service.remove(id);
-    if (error) {
-      return fail(res, error);
-    }
-    return success(res, data, "Remove ticket successfully");
-  } catch (e) {
-    next(e);
-  }
-};
 export const findAndPaginate = async (req, res, next) => {
   try {
     const result = await service.findAndPaginate(req.query);

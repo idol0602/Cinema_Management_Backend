@@ -27,6 +27,5 @@ router.put(
   validate(updateRateSchema),
   controller.update,
 );
-router.delete("/:id", authorize("CUSTOMER"), auth, controller.remove);
 
 export default router;
