@@ -7,26 +7,48 @@ import {
 } from "../validators/combos.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/combos";
 const router = Router();
 
-router.get("/", controller.findAndPaginate);
-router.get("/all", controller.getAll);
-router.get("/:id", controller.getById);
+router.get(
+  "/",
+  auth,
+  authorize(rootPath, METHODS.GET),
+  controller.findAndPaginate,
+);
+router.get(
+  "/all",
+  auth,
+  authorize(rootPath + "/all", METHODS.GET),
+  controller.getAll,
+);
+router.get(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.GET),
+  controller.getById,
+);
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createComboSchema),
-  controller.create
+  controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateComboSchema),
-  controller.update
+  controller.update,
 );
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

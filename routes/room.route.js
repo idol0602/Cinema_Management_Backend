@@ -7,7 +7,9 @@ import {
   createRoomSchema,
   updateRoomSchema,
 } from "../validators/room.schema.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/rooms";
 const router = Router();
 
 router.get("/", controller.findAndPaginate);
@@ -17,19 +19,24 @@ router.get("/:id", controller.getById);
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createRoomSchema),
-  controller.create
+  controller.create,
 );
 
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateRoomSchema),
-  controller.update
+  controller.update,
 );
 
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

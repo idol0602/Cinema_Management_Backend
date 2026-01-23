@@ -9,7 +9,6 @@ export const update = (id, data) => repo.update(id, data);
 export const remove = (id) => repo.remove(id);
 export const getSeatByRoomId = (roomId) => repo.getSeatByRoomId(roomId);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
-
 export const importFromExcel = async (filePath, roomId) => {
   try {
     const workbook = xlsx.readFile(filePath);

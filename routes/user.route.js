@@ -7,20 +7,37 @@ import {
   createUserSchema,
   updateUserSchema,
 } from "../validators/user.schema.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/users";
 const router = Router();
 
-router.get("/", auth, authorize("ADMIN"), controller.findAndPaginate);
-router.get("/all", auth, authorize("ADMIN"), controller.getAll);
-router.get("/:id", auth, authorize("ADMIN"), controller.getById);
+router.get(
+  "/",
+  auth,
+  authorize(rootPath, METHODS.GET),
+  controller.findAndPaginate,
+);
+router.get(
+  "/all",
+  auth,
+  authorize(rootPath + "/all", METHODS.GET),
+  controller.getAll,
+);
+router.get(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.GET),
+  controller.getById,
+);
 
 router.post("/heartbeat/:id", controller.heartbeat);
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createUserSchema),
-  controller.create
+  controller.create,
 );
 
 router.put("/online/:id", controller.online);
@@ -28,11 +45,16 @@ router.put("/offline/:id", controller.offline);
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateUserSchema),
-  controller.update
+  controller.update,
 );
 
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

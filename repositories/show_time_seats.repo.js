@@ -39,3 +39,7 @@ export const findAndPaginate = async (query) => {
     baseFilters: {},
   });
 };
+
+export const bulkCreate = async (payload) => {
+  return await supabase.from("show_time_seats").insert(payload);
+}

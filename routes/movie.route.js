@@ -8,38 +8,60 @@ import {
   updateMovieSchema,
 } from "../validators/movie.schema.js";
 import { uploadExcel } from "../middlewares/upload.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/movies";
 const router = Router();
 
 router.get("/name", controller.getByName);
-router.get("/", controller.findAndPaginate);
-router.get("/all", controller.getAll);
-router.get("/:id", controller.getById);
+router.get(
+  "/",
+  auth,
+  authorize(rootPath, METHODS.GET),
+  controller.findAndPaginate,
+);
+router.get(
+  "/all",
+  auth,
+  authorize(rootPath + "/all", METHODS.GET),
+  controller.getAll,
+);
+router.get(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.GET),
+  controller.getById,
+);
 
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createMovieSchema),
-  controller.create
+  controller.create,
 );
 
 router.post(
   "/import",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/import", METHODS.POST),
   uploadExcel.single("file"),
-  controller.importFromExcel
+  controller.importFromExcel,
 );
 
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateMovieSchema),
-  controller.update
+  controller.update,
 );
 
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

@@ -7,15 +7,25 @@ import {
 } from "../validators/show_time_seats.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/show-time-seats";
 const router = Router();
 
-router.get("/", authorize("CUSTOMER", "STAFF"), controller.findAndPaginate);
-router.get("/all", authorize("CUSTOMER", "STAFF"), controller.getAll);
-router.get("/:id", authorize("CUSTOMER", "STAFF"), controller.getById);
+router.get("/", authorize(rootPath, METHODS.GET), controller.findAndPaginate);
+router.get(
+  "/all",
+  authorize(rootPath + "/all", METHODS.GET),
+  controller.getAll,
+);
+router.get(
+  "/:id",
+  authorize(rootPath + "/:id", METHODS.GET),
+  controller.getById,
+);
 router.get(
   "/status/:id",
-  authorize("CUSTOMER", "STAFF"),
+  authorize(rootPath + "/status/:id", METHODS.GET),
   auth,
   controller.getStatusSeat,
 );
@@ -23,17 +33,22 @@ router.get(
 router.post(
   "/",
   auth,
-  authorize("CUSTOMER", "STAFF"),
+  authorize(rootPath, METHODS.POST),
   validate(createShowTimeSeatSchema),
   controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize("CUSTOMER", "STAFF"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateShowTimeSeatSchema),
   controller.update,
 );
-router.delete("/:id", auth, authorize("CUSTOMER", "STAFF"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

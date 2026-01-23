@@ -7,7 +7,9 @@ import {
 } from "../validators/ticket.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/tickets";
 const router = Router();
 
 router.get("/", auth, controller.findAndPaginate);
@@ -16,14 +18,14 @@ router.get("/:id", auth, controller.getById);
 router.post(
   "/",
   auth,
-  authorize("CUSTOMER", "STAFF"),
+  authorize(rootPath, METHODS.POST),
   validate(createTicketSchema),
   controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize("CUSTOMER", "STAFF"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateTicketSchema),
   controller.update,
 );

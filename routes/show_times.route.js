@@ -8,7 +8,9 @@ import {
 } from "../validators/show_times.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/show-times";
 const router = Router();
 
 router.get("/rooms-and-date", controller.findByRoomIdsAndDates);
@@ -20,24 +22,29 @@ router.get("/:id", controller.getById);
 router.post(
   "/bulk-create",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/bulk-create", METHODS.POST),
   validate(bulkCreateShowTimeSchema),
-  controller.bulkCreate
+  controller.bulkCreate,
 );
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createShowTimeSchema),
-  controller.create
+  controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateShowTimeSchema),
-  controller.update
+  controller.update,
 );
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

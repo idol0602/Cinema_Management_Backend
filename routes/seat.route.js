@@ -8,7 +8,9 @@ import {
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
 import { uploadExcel } from "../middlewares/upload.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/seats";
 const router = Router();
 
 router.get("/room/:id", controller.getSeatByRoomId);
@@ -19,26 +21,31 @@ router.get("/", controller.findAndPaginate);
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createSeatSchema),
-  controller.create
+  controller.create,
 );
 
 router.post(
   "/import",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/import", METHODS.POST),
   uploadExcel.single("file"),
-  controller.importFromExcel
+  controller.importFromExcel,
 );
 
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateSeatSchema),
-  controller.update
+  controller.update,
 );
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

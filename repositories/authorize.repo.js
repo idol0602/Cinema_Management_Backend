@@ -7,8 +7,7 @@ export const findByRoleAndAction = async (roleId, actionId) => {
     .from("authorizes")
     .select("*")
     .eq("role_id", roleId)
-    .eq("action_id", actionId)
-    .single();
+    .eq("action_id", actionId);
 };
 
 export const create = async (payload) => {
@@ -48,4 +47,12 @@ export const findAndPaginate = async (query) => {
     config: authorizePaginateConfig,
     baseFilters: {},
   });
+};
+
+export const bulkCreate = async (authorizes) => {
+  return await supabase.from("authorizes").insert(authorizes);
+};
+
+export const bulkRemove = async (authorizeIds) => {
+  return await supabase.from("authorizes").delete().in("id", authorizeIds);
 };

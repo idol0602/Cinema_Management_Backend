@@ -7,7 +7,9 @@ import {
   createOrderSchema,
   updateOrderSchema,
 } from "../validators/order.schema.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/orders";
 const router = Router();
 
 router.get("/", auth, controller.findAndPaginate);
@@ -17,14 +19,14 @@ router.get("/:id", auth, controller.getById);
 router.post(
   "/",
   auth,
-  authorize("STAFF", "CUSTOMER"),
+  authorize(rootPath, METHODS.POST),
   validate(createOrderSchema),
   controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize("STAFF", "CUSTOMER"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateOrderSchema),
   controller.update,
 );

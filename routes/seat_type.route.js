@@ -7,17 +7,34 @@ import {
   createSeatTypeSchema,
   updateSeatTypeSchema,
 } from "../validators/seat_type.schema.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/seat-types";
 const router = Router();
 
-router.get("/", auth, authorize("ADMIN"), controller.findAndPaginate);
-router.get("/all", auth, authorize("ADMIN"), controller.getAll);
-router.get("/:id", auth, authorize("ADMIN"), controller.getById);
+router.get(
+  "/",
+  auth,
+  authorize(rootPath, METHODS.GET),
+  controller.findAndPaginate,
+);
+router.get(
+  "/all",
+  auth,
+  authorize(rootPath + "/all", METHODS.GET),
+  controller.getAll,
+);
+router.get(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.GET),
+  controller.getById,
+);
 
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createSeatTypeSchema),
   controller.create,
 );
@@ -25,11 +42,16 @@ router.post(
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateSeatTypeSchema),
   controller.update,
 );
 
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

@@ -7,7 +7,9 @@ import {
 } from "../validators/rate.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/rates";
 const router = Router();
 
 router.get("/", controller.findAndPaginate);
@@ -16,14 +18,14 @@ router.get("/:id", controller.getById);
 router.post(
   "/",
   auth,
-  authorize("CUSTOMER"),
+  authorize(rootPath, METHODS.POST),
   validate(createRateSchema),
   controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize("CUSTOMER"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateRateSchema),
   controller.update,
 );

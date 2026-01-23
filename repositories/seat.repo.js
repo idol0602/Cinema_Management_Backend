@@ -48,3 +48,7 @@ export const findAndPaginate = async (query) => {
 export const bulkCreate = async (seats) => {
   return await supabase.from("seats").insert(seats);
 };
+
+export const getSeatsByRoomIds = async (roomIds) => {
+  return await supabase.from("seats").select("*").in("room_id", roomIds);
+}

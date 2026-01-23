@@ -7,31 +7,48 @@ import {
 } from "../validators/combo_item_in_tickets.schema.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
 import { auth } from "../middlewares/auth.middleware.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/combo-item-in-tickets";
 const router = Router();
 
 router.get(
   "/",
   auth,
-  authorize("STAFF", "CUSTOMER"),
+  authorize(rootPath, METHODS.GET),
   controller.findAndPaginate,
 );
-router.get("/all", auth, authorize("STAFF", "CUSTOMER"), controller.getAll);
-router.get("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.getById);
+router.get(
+  "/all",
+  auth,
+  authorize(rootPath + "/all", METHODS.GET),
+  controller.getAll,
+);
+router.get(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.GET),
+  controller.getById,
+);
 router.post(
   "/",
   auth,
-  authorize("STAFF", "CUSTOMER"),
+  authorize(rootPath, METHODS.POST),
   validate(createComboItemInTicketSchema),
   controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize("STAFF", "CUSTOMER"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateComboItemInTicketSchema),
   controller.update,
 );
-router.delete("/:id", auth, authorize("STAFF", "CUSTOMER"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;

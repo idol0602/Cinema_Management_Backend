@@ -7,17 +7,34 @@ import {
   createRoleSchema,
   updateRoleSchema,
 } from "../validators/role.schema.js";
+import { METHODS } from "../utils/method.js";
 
+const rootPath = "/roles";
 const router = Router();
 
-router.get("/", auth, authorize("ADMIN"), controller.findAndPaginate);
-router.get("/all", auth, authorize("ADMIN"), controller.getAll);
-router.get("/:id", auth, authorize("ADMIN"), controller.getById);
+router.get(
+  "/",
+  auth,
+  authorize(rootPath, METHODS.GET),
+  controller.findAndPaginate,
+);
+router.get(
+  "/all",
+  auth,
+  authorize(rootPath + "/all", METHODS.GET),
+  controller.getAll,
+);
+router.get(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.GET),
+  controller.getById,
+);
 
 router.post(
   "/",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath, METHODS.POST),
   validate(createRoleSchema),
   controller.create,
 );
@@ -25,11 +42,16 @@ router.post(
 router.put(
   "/:id",
   auth,
-  authorize("ADMIN"),
+  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateRoleSchema),
   controller.update,
 );
 
-router.delete("/:id", auth, authorize("ADMIN"), controller.remove);
+router.delete(
+  "/:id",
+  auth,
+  authorize(rootPath + "/:id", METHODS.DELETE),
+  controller.remove,
+);
 
 export default router;
