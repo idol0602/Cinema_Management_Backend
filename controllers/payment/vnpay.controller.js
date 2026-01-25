@@ -32,3 +32,47 @@ export const callbackResult = (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * Hoàn tiền VNPay
+ * POST /vnpay/refund
+ * Body: { orderId, transactionNo, amount, transactionDate, createBy? }
+ */
+export const refundPayment = async (req, res) => {
+  try {
+    const { orderId, transactionNo, amount, transactionDate, createBy } = req.body;
+
+    // Validate required fields
+    if (!orderId || !transactionNo || !amount || !transactionDate) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: orderId, transactionNo, amount, transactionDate",
+      });
+    }
+
+    const result = await service.refundPayment({
+      orderId,
+      transactionNo,
+      amount: parseInt(amount),
+      transactionDate,
+      createBy: createBy || "Admin",
+    });
+
+    if (result.success) {
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.vnpayData,
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+        data: result.vnpayData,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

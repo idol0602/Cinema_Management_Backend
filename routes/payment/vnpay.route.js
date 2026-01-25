@@ -6,5 +6,7 @@ const router = Router();
 
 router.post("/create", controller.createPayment);
 router.get("/callback", controller.callbackResult);
+// VNPAY SANDBOX KHÔNG HỖ TRỢ HOẢN TIỀN
+router.post("/refund", controller.refundPayment);
 
 export default router;

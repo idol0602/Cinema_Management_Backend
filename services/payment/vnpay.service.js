@@ -51,3 +51,65 @@ export const createPayment = async ({ orderId, amount }) => {
 export const getPaymentStatus = (resultCode) => {
   return VNPAY_RESULT_CODE_MAP[resultCode] || "FAILED";
 };
+
+/**
+ * Hoàn tiền VNPay
+ * @param {Object} params
+ * @param {string} params.orderId - Mã đơn hàng gốc (vnp_TxnRef)
+ * @param {string} params.transactionNo - Mã giao dịch VNPay (vnp_TransactionNo từ callback)
+ * @param {number} params.amount - Số tiền hoàn
+ * @param {string} params.transactionDate - Ngày giao dịch gốc (vnp_PayDate format: yyyyMMddHHmmss)
+ * @param {string} params.createBy - Người tạo yêu cầu hoàn tiền
+ */
+export const refundPayment = async ({
+  orderId,
+  transactionNo,
+  amount,
+  transactionDate,
+  createBy = "Admin",
+}) => {
+  try {
+    const vnpay = new VNPay({
+      tmnCode: vnpayConfig.TMN_CODE,
+      secureSecret: vnpayConfig.SECURE_SECRET,
+      vnpayHost: vnpayConfig.VNPAY_HOST,
+      testMode: true,
+      hashAlgorithm: "SHA512",
+      loggerFn: ignoreLogger,
+    });
+
+    const refundResponse = await vnpay.refund({
+      vnp_Amount: Number(amount),
+      vnp_CreateBy: createBy,
+      vnp_CreateDate: dateFormat(new Date()),
+      vnp_IpAddr: vnpayConfig.VNPAY_IP_ADDRESS,
+      vnp_OrderInfo: `Hoan tien don hang ${orderId}`,
+      vnp_RequestId: `${orderId}_REFUND_${Date.now()}`,
+      vnp_TransactionDate: transactionDate,
+      vnp_TransactionNo: Number(transactionNo),
+      vnp_TransactionType: "02", // 02 = Hoàn tiền toàn phần, 03 = Hoàn tiền một phần
+      vnp_TxnRef: orderId,
+    });
+
+    // vnp_ResponseCode = "00" means success
+    if (refundResponse.vnp_ResponseCode === "00") {
+      return {
+        success: true,
+        vnpayData: refundResponse,
+        message: "Refund processed successfully",
+      };
+    } else {
+      return {
+        success: false,
+        vnpayData: refundResponse,
+        message: refundResponse.vnp_Message || "Refund failed",
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      vnpayData: {},
+      message: error.message || "Refund request failed",
+    };
+  }
+};

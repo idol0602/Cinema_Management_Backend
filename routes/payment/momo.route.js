@@ -6,5 +6,6 @@ const router = Router();
 
 router.post("/create", controller.createPayment);
 router.get("/callback", controller.callbackResult);
+router.post("/refund", controller.refundPayment);
 
 export default router;
