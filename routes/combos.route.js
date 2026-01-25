@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as controller from "../controllers/combos.controller.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
-  createComboSchema,
+  createComboAndRelationSchema,
   updateComboSchema,
 } from "../validators/combos.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
@@ -34,7 +34,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
-  validate(createComboSchema),
+  validate(createComboAndRelationSchema),
   controller.create,
 );
 router.put(

@@ -2,8 +2,13 @@ import { supabase } from "../config/supabase.js";
 import { comboPaginateConfig } from "../config/paginate/combo.config.js";
 import { paginate } from "../utils/paginate.js";
 
-export const create = async (combo) => {
-  return await supabase.from("combos").insert(combo).single();
+export const create = async ({ p_combo, p_combo_items, p_combo_movie, p_combo_event }) => {
+  return await supabase.rpc("insert_combo_with_details", {
+    p_combo,
+    p_combo_items,
+    p_combo_movie,
+    p_combo_event,
+  });
 };
 
 export const findAll = async () => {
