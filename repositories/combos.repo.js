@@ -32,6 +32,16 @@ export const update = async (id, data) => {
   return await supabase.from("combos").update(data).eq("id", id);
 };
 
+export const updateWithDetails = async (id, { p_combo, p_combo_items, p_combo_movie, p_combo_event }) => {
+  return await supabase.rpc("update_combo_with_details", {
+    p_combo_id: id,
+    p_combo,
+    p_combo_items,
+    p_combo_movie,
+    p_combo_event,
+  });
+};
+
 export const remove = async (id) => {
   return await supabase
     .from("combos")

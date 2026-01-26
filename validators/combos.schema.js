@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import {createComboItemSchema} from "./combo_items.schema.js"
-import {createComboMovieSchema} from "./combo_movies.schema.js"
-import {createComboEventSchema} from "./combos_events.schema.js"
+import { createComboItemSchema } from "./combo_items.schema.js";
+import { createComboMovieSchema } from "./combo_movies.schema.js";
+import { createComboEventSchema } from "./combos_events.schema.js";
 
 export const createComboSchema = z.object({
   name: z.string().min(1),
@@ -20,3 +20,10 @@ export const createComboAndRelationSchema = z.object({
 });
 
 export const updateComboSchema = createComboSchema.partial();
+
+export const updateComboAndRelationSchema = z.object({
+  combo: createComboSchema.partial(),
+  comboItems: z.array(createComboItemSchema).default([]).optional(),
+  comboMovie: createComboMovieSchema.default({}).optional(),
+  comboEvent: createComboEventSchema.default({}).optional(),
+});

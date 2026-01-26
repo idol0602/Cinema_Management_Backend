@@ -1,6 +1,7 @@
 import { supabase } from "../config/supabase.js";
 import { orderPaginateConfig } from "../config/paginate/order.config.js";
 import { paginate } from "../utils/paginate.js";
+import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
 
 export const create = async (order) => {
   return await supabase.from("orders").insert(order).single();
@@ -30,4 +31,15 @@ export const findAndPaginate = async (query) => {
     config: orderPaginateConfig,
     baseFilters: {},
   });
+};
+
+export const canRefund = async (orderId) => {
+  const orderWithMovie = await supabase.from("orders").select("*").eq("id", orderId).single();
+  // kết bảng movies vào
+  const {data,error} = orderWithMovie;
+
+  if(error) {
+    return false;
+  }
+  return true;
 };

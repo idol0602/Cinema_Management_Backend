@@ -47,6 +47,7 @@ export const update = async (req, res, next) => {
     }
     return success(res, data, "Update combo successfully");
   } catch (e) {
+    console.error("Update combo error:", e);
     next(e);
   }
 };

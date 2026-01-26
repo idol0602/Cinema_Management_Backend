@@ -3,7 +3,7 @@ import * as controller from "../controllers/combos.controller.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
   createComboAndRelationSchema,
-  updateComboSchema,
+  updateComboAndRelationSchema,
 } from "../validators/combos.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
@@ -41,7 +41,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
-  validate(updateComboSchema),
+  validate(updateComboAndRelationSchema),
   controller.update,
 );
 router.delete(
