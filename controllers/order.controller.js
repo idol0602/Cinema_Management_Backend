@@ -68,3 +68,16 @@ export const findAndPaginate = async (req, res, next) => {
     next(e);
   }
 };
+
+export const getOrderDetails = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await service.getOrderDetails(id);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Get order details successfully");
+  } catch (e) {
+    next(e);
+  }
+};

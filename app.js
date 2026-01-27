@@ -36,6 +36,7 @@ import ticketRoutes from "./routes/ticket.route.js";
 import ordersRoutes from "./routes/orders.route.js";
 import momoRoutes from "./routes/payment/momo.route.js";
 import vnpayRoutes from "./routes/payment/vnpay.route.js";
+import chatBotRoutes from "./routes/chatbot.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 
 const app = express();
@@ -93,6 +94,7 @@ app.use("/api/ticket-prices", ticketPricesRoutes);
 app.use("/api/tickets", ticketRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/agent", agentRoutes);
+app.use("/api/chatbot", chatBotRoutes);
 
 app.use("/api/payment/momo", momoRoutes);
 app.use("/api/payment/vnpay", vnpayRoutes);

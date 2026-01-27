@@ -13,3 +13,4 @@ export const findAll = () => repo.findAll();
 export const findById = (id) => repo.findById(id);
 export const update = (id, data) => repo.update(id, data);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
+export const getOrderDetails = (orderId) => repo.getOrderDetails(orderId);

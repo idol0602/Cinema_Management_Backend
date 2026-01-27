@@ -43,3 +43,7 @@ export const canRefund = async (orderId) => {
   }
   return true;
 };
+
+export const getOrderDetails = async (orderId) => {
+  return await supabase.rpc("get_order_details", { p_order_id: orderId });
+};
