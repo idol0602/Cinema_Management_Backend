@@ -33,17 +33,6 @@ export const findAndPaginate = async (query) => {
   });
 };
 
-export const canRefund = async (orderId) => {
-  const orderWithMovie = await supabase.from("orders").select("*").eq("id", orderId).single();
-  // kết bảng movies vào
-  const {data,error} = orderWithMovie;
-
-  if(error) {
-    return false;
-  }
-  return true;
-};
-
 export const getOrderDetails = async (orderId) => {
   return await supabase.rpc("get_order_details", { p_order_id: orderId });
 };

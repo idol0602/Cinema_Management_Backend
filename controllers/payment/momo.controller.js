@@ -1,4 +1,3 @@
-// Backend/controllers/payment/momo.controller.js
 import * as service from "../../services/payment/momo.service.js";
 
 export const createPayment = async (req, res) => {
@@ -33,20 +32,14 @@ export const callbackResult = (req, res) => {
   }
 };
 
-/**
- * Hoàn tiền MoMo
- * POST /momo/refund
- * Body: { orderId, transId, amount, description? }
- */
 export const refundPayment = async (req, res) => {
   try {
-    const { orderId, transId, amount, description } = req.body;
+    const { orderId, transId, amount, startTime, paymentMethod, paymentStatus } = req.body;
 
-    // Validate required fields
-    if (!orderId || !transId || !amount) {
+    if (!orderId || !transId || !amount || !startTime || !paymentMethod || !paymentStatus) {
       return res.status(400).json({
         success: false,
-        error: "Missing required fields: orderId, transId, amount",
+        error: "Missing required fields: orderId, transId, amount, startTime, paymentMethod, paymentStatus",
       });
     }
 
@@ -54,7 +47,9 @@ export const refundPayment = async (req, res) => {
       orderId,
       transId,
       amount: parseInt(amount),
-      description: description || "",
+      startTime,
+      paymentMethod,
+      paymentStatus,
     });
 
     if (result.success) {

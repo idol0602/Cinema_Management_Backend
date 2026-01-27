@@ -1,6 +1,7 @@
 // Backend/services/payment/momo.service.js
 import crypto from "crypto";
 import { momoConfig } from "../../config/payment/momo.js";
+import { PAYMENT_STATUS } from "../../utils/paymentStatus.js";
 
 const MOMO_RESULT_CODE_MAP = {
   0: "PAID", // Thành công
@@ -90,23 +91,28 @@ export const getPaymentStatus = (resultCode) => {
   return MOMO_RESULT_CODE_MAP[resultCode] || "FAILED";
 };
 
-export const refundPayment = async ({ orderId, transId, amount, description = "" }) => {
+export const refundPayment = async ({ orderId, transId, amount, startTime, paymentMethod, paymentStatus}) => {
   try {
     const accessKey = momoConfig.MOMO_ACCESS_KEY;
     const secretKey = momoConfig.MOMO_SECRET_KEY;
     const partnerCode = momoConfig.MOMO_PARTNER_CODE;
+
+    if(!canRefund(startTime, paymentMethod, paymentStatus)) {
+      return {
+        success: false,
+        momoData,
+        message: "User cannot request a refund because it violates the refund policy",
+      };
+    }
     
-    // OrderId cho refund PHẢI là mã MỚI, không được trùng với orderId gốc
     const refundOrderId = `${orderId}_REFUND_${Date.now()}`;
-    // RequestId phải unique cho mỗi lần refund
     const requestId = `${orderId}_refund_${Date.now()}`;
     const lang = "vi";
 
-    // Signature cho refund API - dùng refundOrderId thay vì orderId gốc
     const rawSignature =
       `accessKey=${accessKey}` +
       `&amount=${amount}` +
-      `&description=${description}` +
+      `&description=${"refund for order " + orderId}` +
       `&orderId=${refundOrderId}` +
       `&partnerCode=${partnerCode}` +
       `&requestId=${requestId}` +
@@ -119,16 +125,15 @@ export const refundPayment = async ({ orderId, transId, amount, description = ""
 
     const requestBody = {
       partnerCode,
-      orderId: refundOrderId,  // Dùng refundOrderId
+      orderId: refundOrderId,
       requestId,
       amount,
       transId,
       lang,
-      description,
+      description: "refund for order " + orderId,
       signature,
     };
 
-    // MoMo Refund API endpoint (same base, different path)
     const refundEndpoint = momoConfig.MOMO_ENDPOINT.replace("/create", "/refund");
 
     const momoRes = await fetch(refundEndpoint, {
@@ -141,7 +146,6 @@ export const refundPayment = async ({ orderId, transId, amount, description = ""
 
     const momoData = await momoRes.json();
 
-    // resultCode = 0 means success
     if (momoData.resultCode === 0) {
       return {
         success: true,
@@ -163,3 +167,10 @@ export const refundPayment = async ({ orderId, transId, amount, description = ""
     };
   }
 };
+
+const canRefund = (startTime, paymentMethod, paymentStatus) => {
+  const now = new Date()
+  const start = new Date(startTime)
+  const TWO_HOURS = 2 * 60 * 60 * 100;
+  return start.getTime() - now.getTime() >= TWO_HOURS && paymentMethod === "MOMO" && paymentStatus === PAYMENT_STATUS.REFUND_PENDING
+}
