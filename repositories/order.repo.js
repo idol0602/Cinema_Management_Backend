@@ -30,6 +30,10 @@ export const findAndPaginate = async (query) => {
     query: query,
     config: orderPaginateConfig,
     baseFilters: {},
+    joinTables: {
+      movies: "movie_id",
+      users: "user_id",
+    },
   });
 };
 
