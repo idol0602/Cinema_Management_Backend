@@ -36,7 +36,7 @@ export const findAndPaginate = async (query) => {
     table: "show_time_seats",
     query: query,
     config: showTimeSeatPaginateConfig,
-    baseFilters: {},
+    baseFilters: {}
   });
 };
 

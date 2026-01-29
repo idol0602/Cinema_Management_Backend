@@ -41,7 +41,9 @@ export const findAndPaginate = async (query) => {
     table: "seats",
     query: query,
     config: seatPaginationConfig,
-    baseFilters: {},
+    baseFilters: {
+      is_active: true,
+    },
   });
 };
 

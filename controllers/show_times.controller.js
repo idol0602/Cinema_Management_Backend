@@ -116,3 +116,16 @@ export const bulkCreate = async (req, res, next) => {
     next(e);
   }
 };
+
+export const getShowTimeDetails = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await service.getShowTimeDetails(id);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Get show time details successfully");
+  } catch (e) {
+    next(e);
+  }
+};

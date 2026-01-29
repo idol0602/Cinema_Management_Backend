@@ -14,6 +14,7 @@ const rootPath = "/show-times";
 const router = Router();
 
 router.get("/rooms-and-date", controller.findByRoomIdsAndDates);
+router.get("/details/:id", controller.getShowTimeDetails);
 router.get("/room/:id", controller.getByRoomId);
 router.get("/", controller.findAndPaginate);
 router.get("/all", controller.getAll);

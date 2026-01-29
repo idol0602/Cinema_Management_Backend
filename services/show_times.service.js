@@ -60,3 +60,5 @@ export const bulkCreate = async (showTimes) => {
     return { data: null, error: error.message };
   }
 };
+export const getShowTimeDetails = (showTimeId) => repo.getShowTimeDetails(showTimeId);
+

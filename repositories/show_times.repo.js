@@ -65,3 +65,6 @@ export const findByRoomIdsAndDates = async (roomIds, startDate, endDate) => {
 export const bulkCreate = async (showTimes) => {
   return await supabase.from("show_times").insert(showTimes);
 };
+export const getShowTimeDetails = async (showTimeId) => {
+  return await supabase.rpc("get_show_time_details", { p_show_time_id: showTimeId });
+};
