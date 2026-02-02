@@ -25,6 +25,12 @@ router.get(
   controller.getAll,
 );
 router.get(
+  "/details/:id",
+  auth,
+  authorize(rootPath + "/details/:id", METHODS.GET),
+  controller.getDetails,
+);
+router.get(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.GET),

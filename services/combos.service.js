@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+  import { v4 as uuidv4 } from "uuid";
 import * as repo from "../repositories/combos.repo.js";
 
 export const create = (payload) => {
@@ -9,6 +9,8 @@ export const create = (payload) => {
     name: combo.name,
     description: combo.description,
     total_price: combo.total_price,
+    image: combo.image || null,
+    is_event_combo: combo.is_event_combo ?? false,
     is_active: combo.is_active ?? true,
     created_at: new Date().toISOString(),
   };
@@ -59,6 +61,8 @@ export const update = async (id, payload) => {
     name: combo.name,
     description: combo.description,
     total_price: combo.total_price,
+    image: combo.image || null,
+    is_event_combo: combo.is_event_combo ?? false,
     is_active: combo.is_active ?? true,
   };
 
@@ -123,3 +127,4 @@ export const findAll = () => repo.findAll();
 export const findById = (id) => repo.findById(id);
 export const remove = (id) => repo.remove(id);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
+export const getDetails = (id) => repo.getDetails(id);

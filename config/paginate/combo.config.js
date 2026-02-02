@@ -3,6 +3,7 @@ export const comboPaginateConfig = {
   searchableColumns: ["name", "description"],
   filterableColumns: {
     is_active: true,
+    is_event_combo: true,
   },
   defaultSortBy: [["created_at", "DESC"]],
   defaultLimit: 10,

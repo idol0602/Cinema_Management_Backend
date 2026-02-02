@@ -63,3 +63,7 @@ export const findAndPaginate = async (query) => {
     },
   });
 };
+
+export const getDetails = async (id) => {
+  return await supabase.rpc("get_combo_details", { p_combo_id: id });
+};

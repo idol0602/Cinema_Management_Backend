@@ -80,3 +80,16 @@ export const findAndPaginate = async (req, res, next) => {
     next(e);
   }
 };
+
+export const getDetails = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await service.getDetails(id);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Get combo details successfully");
+  } catch (e) {
+    next(e);
+  }
+};

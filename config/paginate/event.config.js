@@ -5,6 +5,7 @@ export const eventPaginateConfig = {
     event_type_id: true,
     only_at_counter: true,
     is_active: true,
+    is_in_combo: true,
   },
   defaultSortBy: [["created_at", "DESC"]],
   defaultLimit: 10,
