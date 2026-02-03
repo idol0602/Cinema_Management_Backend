@@ -5,6 +5,11 @@ import {
   createShowTimeSeatSchema,
   updateShowTimeSeatSchema,
 } from "../validators/show_time_seats.schema.js";
+import {
+  holdSeatSchema,
+  bulkHoldSeatsSchema,
+  bulkCancelHoldSeatsSchema,
+} from "../validators/hold_seat.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
 import { METHODS } from "../utils/method.js";
@@ -49,6 +54,41 @@ router.delete(
   auth,
   authorize(rootPath + "/:id", METHODS.DELETE),
   controller.remove,
+);
+
+// Seat hold routes - BULK OPERATIONS MUST COME BEFORE :id ROUTES
+router.post(
+  "/hold/bulk",
+  auth,
+  validate(bulkHoldSeatsSchema),
+  controller.bulkHoldSeats,
+);
+
+router.delete(
+  "/hold/bulk",
+  auth,
+  validate(bulkCancelHoldSeatsSchema),
+  controller.bulkCancelHoldSeats,
+);
+
+// Single seat hold operations
+router.post(
+  "/hold/:id",
+  auth,
+  validate(holdSeatSchema),
+  controller.holdSeat,
+);
+
+router.delete(
+  "/hold/:id",
+  auth,
+  controller.cancelHoldSeat,
+);
+
+router.get(
+  "/hold/:id",
+  auth,
+  controller.getHoldInfo,
 );
 
 export default router;

@@ -90,3 +90,85 @@ export const findAndPaginate = async (req, res, next) => {
     next(e);
   }
 };
+
+export const holdSeat = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { ttlSeconds } = req.body;
+
+    const { data, error } = await service.holdSeat(id, userId, ttlSeconds);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Seat held successfully", 200);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const cancelHoldSeat = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const { data, error } = await service.cancelHoldSeat(id, userId);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Seat hold cancelled successfully", 200);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getHoldInfo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await service.getHoldInfo(id);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Hold info retrieved successfully", 200);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const bulkHoldSeats = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { showTimeSeatIds, ttlSeconds } = req.body;
+
+    const { data, error } = await service.bulkHoldSeats(
+      showTimeSeatIds,
+      userId,
+      ttlSeconds,
+    );
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Seats held successfully", 200);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const bulkCancelHoldSeats = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { showTimeSeatIds } = req.body;
+
+    const { data, error } = await service.bulkCancelHoldSeats(
+      showTimeSeatIds,
+      userId,
+    );
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Seat holds cancelled successfully", 200);
+  } catch (e) {
+    next(e);
+  }
+};
