@@ -62,7 +62,7 @@ const limiter = rateLimit({
   max: process.env.NODE_ENV === "development" ? 1000 : 100,
 });
 
-app.use(limiter);
+// app.use(limiter);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/authorizes", authorizeRoutes);

@@ -3,6 +3,7 @@ import { showTimeSeatPaginateConfig } from "../config/paginate/show_time_seat.co
 import { paginate } from "../utils/paginate.js";
 import { redis } from "../config/redis.js";
 import { publishSeatExpirationDLX } from "../config/rabbitmq.js";
+import { SEAT_STATUS } from "../utils/seatStatus.js";
 
 export const create = async (payload) => {
   return await supabase.from("show_time_seats").insert(payload).single();
@@ -38,13 +39,13 @@ export const findAndPaginate = async (query) => {
     table: "show_time_seats",
     query: query,
     config: showTimeSeatPaginateConfig,
-    baseFilters: {}
+    baseFilters: {},
   });
 };
 
 export const bulkCreate = async (payload) => {
   return await supabase.from("show_time_seats").insert(payload);
-}
+};
 
 export const findByShowTimeId = async (showTimeId) => {
   return await supabase
@@ -54,8 +55,6 @@ export const findByShowTimeId = async (showTimeId) => {
 };
 
 export const holdSeat = async (showTimeSeatId, userId, ttlSeconds = 600) => {
-  console.log(`[holdSeat] Attempting to hold seat: ${showTimeSeatId} for user: ${userId}`);
-  
   // Check if seat exists and get current status
   const { data: seat, error: seatError } = await supabase
     .from("show_time_seats")
@@ -63,41 +62,37 @@ export const holdSeat = async (showTimeSeatId, userId, ttlSeconds = 600) => {
     .eq("id", showTimeSeatId)
     .maybeSingle();
 
-  console.log(`[holdSeat] Query result - seat:`, seat);
-  console.log(`[holdSeat] Query error:`, seatError);
-
   if (seatError) {
-    console.error(`[holdSeat] Supabase error for seat ${showTimeSeatId}:`, seatError);
     return { data: null, error: seatError };
   }
 
   if (!seat) {
-    console.error(`[holdSeat] Seat ${showTimeSeatId} not found in database`);
     return { data: null, error: { message: "Seat not found" } };
   }
 
-  console.log(`[holdSeat] Seat found with status: ${seat.status_seat}`);
-
   // Check if seat is already held by someone else
-  const redisKey = `seat:hold:${showTimeSeatId}`;
+  const redisKey = `seat:hold:${showTimeSeatId}:${userId}`;
   const existingHold = await redis.get(redisKey);
-  
+
   if (existingHold) {
     const holdData = JSON.parse(existingHold);
     if (holdData.userId !== userId) {
-      return { 
-        data: null, 
-        error: { message: "Seat is already held by another user" } 
+      return {
+        data: null,
+        error: { message: "Seat is already held by another user" },
       };
     }
     // If same user, extend the hold
   }
 
   // Only allow holding if seat is AVAILABLE or HOLDING
-  if (seat.status_seat !== "AVAILABLE" && seat.status_seat !== "HOLDING") {
-    return { 
-      data: null, 
-      error: { message: `Cannot hold seat with status: ${seat.status_seat}` } 
+  if (
+    seat.status_seat !== SEAT_STATUS.AVAILABLE &&
+    seat.status_seat !== SEAT_STATUS.HOLDING
+  ) {
+    return {
+      data: null,
+      error: { message: `Cannot hold seat with status: ${seat.status_seat}` },
     };
   }
 
@@ -116,11 +111,11 @@ export const holdSeat = async (showTimeSeatId, userId, ttlSeconds = 600) => {
   // Publish delayed message to RabbitMQ for expiration check
   await publishSeatExpirationDLX(
     { showTimeSeatId, userId, heldAt: holdData.heldAt },
-    ttlSeconds * 1000 // Convert to milliseconds
-  );  // Update database status to HOLDING
+    ttlSeconds * 1000, // Convert to milliseconds
+  ); // Update database status to HOLDING
   const { data: updatedSeat, error: updateError } = await supabase
     .from("show_time_seats")
-    .update({ status_seat: "HOLDING" })
+    .update({ status_seat: SEAT_STATUS.HOLDING })
     .eq("id", showTimeSeatId)
     .select()
     .maybeSingle();
@@ -128,30 +123,33 @@ export const holdSeat = async (showTimeSeatId, userId, ttlSeconds = 600) => {
   if (updateError || !updatedSeat) {
     // Rollback Redis if database update fails
     await redis.del(redisKey);
-    return { data: null, error: updateError || { message: "Failed to update seat status" } };
+    return {
+      data: null,
+      error: updateError || { message: "Failed to update seat status" },
+    };
   }
 
   return { data: { ...updatedSeat, holdInfo: holdData }, error: null };
 };
 
 export const cancelHoldSeat = async (showTimeSeatId, userId) => {
-  const redisKey = `seat:hold:${showTimeSeatId}`;
+  const redisKey = `seat:hold:${showTimeSeatId}:${userId}`;
   const existingHold = await redis.get(redisKey);
 
   if (!existingHold) {
-    return { 
-      data: null, 
-      error: { message: "Seat is not currently held" } 
+    return {
+      data: null,
+      error: { message: "Seat is not currently held" },
     };
   }
 
   const holdData = JSON.parse(existingHold);
-  
+
   // Verify the user is the one who held the seat
   if (holdData.userId !== userId) {
-    return { 
-      data: null, 
-      error: { message: "You can only cancel your own holds" } 
+    return {
+      data: null,
+      error: { message: "You can only cancel your own holds" },
     };
   }
 
@@ -161,20 +159,23 @@ export const cancelHoldSeat = async (showTimeSeatId, userId) => {
   // Update database status back to AVAILABLE
   const { data: updatedSeat, error: updateError } = await supabase
     .from("show_time_seats")
-    .update({ status_seat: "AVAILABLE" })
+    .update({ status_seat: SEAT_STATUS.AVAILABLE })
     .eq("id", showTimeSeatId)
     .select()
     .maybeSingle(); // Changed .single() to .maybeSingle() for consistency and robustness
 
   if (updateError || !updatedSeat) {
-    return { data: null, error: updateError || { message: "Failed to update seat status" } };
+    return {
+      data: null,
+      error: updateError || { message: "Failed to update seat status" },
+    };
   }
 
   return { data: updatedSeat, error: null };
 };
 
-export const getHoldInfo = async (showTimeSeatId) => {
-  const redisKey = `seat:hold:${showTimeSeatId}`;
+export const getHoldInfo = async (showTimeSeatId, userId) => {
+  const redisKey = `seat:hold:${showTimeSeatId}:${userId}`;
   const holdData = await redis.get(redisKey);
 
   if (!holdData) {
@@ -184,27 +185,61 @@ export const getHoldInfo = async (showTimeSeatId) => {
   return { data: JSON.parse(holdData), error: null };
 };
 
-export const bulkHoldSeats = async (showTimeSeatIds, userId, ttlSeconds = 600) => {
+export const getAllHeldSeatsByUserId = async (userId) => {
+  try {
+    // Get all keys matching pattern seat:hold:*:userId
+    const pattern = `seat:hold:*:${userId}`;
+    const keys = await redis.keys(pattern);
+
+    if (!keys || keys.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Get all hold data for these keys
+    const holdDataList = [];
+    for (const key of keys) {
+      const holdData = await redis.get(key);
+      if (holdData) {
+        // Extract showTimeSeatId from key (format: seat:hold:{showTimeSeatId}:{userId})
+        const showTimeSeatId = key.split(":")[2];
+        holdDataList.push({
+          showTimeSeatId,
+          ...JSON.parse(holdData),
+        });
+      }
+    }
+
+    return { data: holdDataList, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const bulkHoldSeats = async (
+  showTimeSeatIds,
+  userId,
+  ttlSeconds = 600,
+) => {
   const results = [];
   const successfulHolds = [];
   for (const seatId of showTimeSeatIds) {
     const result = await holdSeat(seatId, userId, ttlSeconds);
     results.push({ seatId, ...result });
-    
+
     if (result.error) {
       // Rollback all successful holds
       for (const successSeatId of successfulHolds) {
         await cancelHoldSeat(successSeatId, userId);
       }
-      return { 
-        data: null, 
-        error: { 
-          message: "Failed to hold all seats", 
-          details: results 
-        } 
+      return {
+        data: null,
+        error: {
+          message: "Failed to hold all seats",
+          details: results,
+        },
       };
     }
-    
+
     successfulHolds.push(seatId);
   }
 

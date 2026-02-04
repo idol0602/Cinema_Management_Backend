@@ -125,12 +125,26 @@ export const cancelHoldSeat = async (req, res, next) => {
 export const getHoldInfo = async (req, res, next) => {
   try {
     const { id } = req.params;
-
-    const { data, error } = await service.getHoldInfo(id);
+    const userId = req.user.id;
+    console.log(userId);
+    const { data, error } = await service.getHoldInfo(id, userId || 1);
     if (error) {
       return fail(res, error);
     }
     return success(res, data, "Hold info retrieved successfully", 200);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const getAllHeldSeats = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { data, error } = await service.getAllHeldSeatsByUserId(userId);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "All held seats retrieved successfully", 200);
   } catch (e) {
     next(e);
   }

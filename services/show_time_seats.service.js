@@ -9,9 +9,17 @@ export const remove = (id) => repo.remove(id);
 export const statusSeat = (id) => repo.getStatus(id);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
 export const bulkCreate = (payload) => repo.bulkCreate(payload);
-export const findByShowTimeId = (showTimeId) => repo.findByShowTimeId(showTimeId);
-export const holdSeat = (showTimeSeatId, userId, ttlSeconds) => repo.holdSeat(showTimeSeatId, userId, ttlSeconds);
-export const cancelHoldSeat = (showTimeSeatId, userId) => repo.cancelHoldSeat(showTimeSeatId, userId);
-export const getHoldInfo = (showTimeSeatId) => repo.getHoldInfo(showTimeSeatId);
-export const bulkHoldSeats = (showTimeSeatIds, userId, ttlSeconds) => repo.bulkHoldSeats(showTimeSeatIds, userId, ttlSeconds);
-export const bulkCancelHoldSeats = (showTimeSeatIds, userId) => repo.bulkCancelHoldSeats(showTimeSeatIds, userId);
+export const findByShowTimeId = (showTimeId) =>
+  repo.findByShowTimeId(showTimeId);
+export const holdSeat = (showTimeSeatId, userId, ttlSeconds) =>
+  repo.holdSeat(showTimeSeatId, userId, ttlSeconds);
+export const cancelHoldSeat = (showTimeSeatId, userId) =>
+  repo.cancelHoldSeat(showTimeSeatId, userId);
+export const getHoldInfo = (showTimeSeatId, userId) =>
+  repo.getHoldInfo(showTimeSeatId, userId);
+export const getAllHeldSeatsByUserId = (userId) =>
+  repo.getAllHeldSeatsByUserId(userId);
+export const bulkHoldSeats = (showTimeSeatIds, userId, ttlSeconds) =>
+  repo.bulkHoldSeats(showTimeSeatIds, userId, ttlSeconds);
+export const bulkCancelHoldSeats = (showTimeSeatIds, userId) =>
+  repo.bulkCancelHoldSeats(showTimeSeatIds, userId);

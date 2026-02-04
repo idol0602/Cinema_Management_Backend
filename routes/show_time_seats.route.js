@@ -72,23 +72,12 @@ router.delete(
 );
 
 // Single seat hold operations
-router.post(
-  "/hold/:id",
-  auth,
-  validate(holdSeatSchema),
-  controller.holdSeat,
-);
+router.post("/hold/:id", auth, validate(holdSeatSchema), controller.holdSeat);
 
-router.delete(
-  "/hold/:id",
-  auth,
-  controller.cancelHoldSeat,
-);
+router.delete("/hold/:id", auth, controller.cancelHoldSeat);
 
-router.get(
-  "/hold/:id",
-  auth,
-  controller.getHoldInfo,
-);
+router.get("/hold/:id", auth, controller.getHoldInfo);
+
+router.get("/hold-by-user/all", auth, controller.getAllHeldSeats);
 
 export default router;

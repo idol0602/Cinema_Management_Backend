@@ -13,14 +13,11 @@ export const startSeatExpirationConsumer = async () => {
 
   if (!channel) {
     console.error("❌ Cannot start consumer: RabbitMQ channel not available");
-    console.log("⏳ Retrying in 3 seconds...");
     setTimeout(startSeatExpirationConsumer, 3000);
     return;
   }
 
   console.log(`🎧 Starting consumer on queue: ${SEAT_EXPIRATION_QUEUE}`);
-
-  // Process one message at a time
   channel.prefetch(1);
 
   channel.consume(
@@ -66,7 +63,6 @@ export const startSeatExpirationConsumer = async () => {
         }
 
         channel.ack(msg);
-        console.log(`✅ Message acknowledged`);
       } catch (error) {
         console.error("❌ Error processing message:", error.message);
         channel.nack(msg, false, false);
