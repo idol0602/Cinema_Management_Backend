@@ -1,10 +1,12 @@
 import * as repo from "../repositories/order.repo.js";
 import { v4 as uuidv4 } from "uuid";
+import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
 
 export const create = (order) => {
   const movieWithId = {
-    id: uuidv4(),
     ...order,
+    id: uuidv4(),
+    payment_status: PAYMENT_STATUS.PENDING,
   };
   return repo.create(movieWithId);
 };
