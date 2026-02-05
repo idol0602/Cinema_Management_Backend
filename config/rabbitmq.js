@@ -1,100 +1,30 @@
-import "dotenv/config";
 import amqp from "amqplib";
+import { EXCHANGE } from "../rabbitmq/exchange.js";
+import { Consumer } from "../rabbitmq/consumer.js";
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL;
-
-// Queue configuration
-export const SEAT_EXPIRATION_QUEUE = "seat_expiration_queue_v2";
-const SEAT_DELAY_QUEUE = "seat_delay_queue_v2";
-const SEAT_EXCHANGE = "seat_exchange_v2";
-
-let connection = null;
 let channel = null;
 
-/**
- * Connect to RabbitMQ and setup delayed queue using DLX
- */
 export const connectRabbitMQ = async () => {
-  try {
-    console.log("🐰 Connecting to RabbitMQ...");    
-    connection = await amqp.connect(RABBITMQ_URL);
-    channel = await connection.createChannel();
-
-    // Create main exchange
-    await channel.assertExchange(SEAT_EXCHANGE, "direct", { durable: true });
-
-    // Create the processing queue (where expired messages go)
-    const processingQueue = await channel.assertQueue(SEAT_EXPIRATION_QUEUE, {
-      durable: true,
-    });
-    
-    await channel.bindQueue(SEAT_EXPIRATION_QUEUE, SEAT_EXCHANGE, "expired");
-
-    // Create delay queue with DLX pointing to processing queue
-    const delayQueue = await channel.assertQueue(SEAT_DELAY_QUEUE, {
-      durable: true,
-      arguments: {
-        "x-dead-letter-exchange": SEAT_EXCHANGE,
-        "x-dead-letter-routing-key": "expired",
-      },
-    });
-    // Handle connection close
-    connection.on("close", () => {
-      console.log("⚠️ RabbitMQ connection closed");
-    });
-
-    connection.on("error", (err) => {
-      console.error("❌ RabbitMQ connection error:", err.message);
-    });
-
-    return { connection, channel };
-  } catch (error) {
-    console.error("❌ Failed to connect to RabbitMQ:", error.message);
-    setTimeout(connectRabbitMQ, 5000);
-  }
-};
-
-/**
- * Publish a delayed message for seat expiration
- */
-export const publishSeatExpirationDLX = async (payload, delayMs) => {
-  try {
-    if (!channel) {
-      console.error("❌ RabbitMQ channel not available");
-      return false;
+    try {
+        const connection = await amqp.connect(process.env.RABBITMQ_URL);
+        channel = await connection.createChannel();
+        setup();
+        Consumer.ready();
+        console.log("RabbitMQ connected");
+    } catch (error) {
+        console.error("RabbitMQ connection error", error);
     }
+}
 
-    const message = Buffer.from(JSON.stringify(payload));
-    
-    // Send to delay queue with per-message TTL
-    const sent = channel.sendToQueue(SEAT_DELAY_QUEUE, message, {
-      persistent: true,
-      expiration: delayMs.toString(),
-    });
-    
-    // Check queue status
-    const queueInfo = await channel.checkQueue(SEAT_DELAY_QUEUE);
-    
-    return sent;
-  } catch (error) {
-    console.error("❌ Failed to publish:", error.message);
-    return false;
-  }
-};
+const setup = async () => {
+    for(let [_,value] of Object.entries(EXCHANGE)) {
+        await channel.assertExchange(value.exchange, value.type, {
+            durable: true,
+            ...(value.arguments && { arguments: value.arguments }),
+        });
+        await channel.assertQueue(value.queue, {durable: true})
+        await channel.bindQueue(value.queue, value.exchange, value.bindingKey)
+    }
+}
 
-/**
- * Get the channel for consumers
- */
 export const getChannel = () => channel;
-
-/**
- * Close RabbitMQ connection
- */
-export const closeRabbitMQ = async () => {
-  try {
-    if (channel) await channel.close();
-    if (connection) await connection.close();
-  } catch (error) {
-    console.error("❌ Error closing RabbitMQ:", error.message);
-  }
-};

@@ -2,8 +2,8 @@ import { supabase } from "../config/supabase.js";
 import { showTimeSeatPaginateConfig } from "../config/paginate/show_time_seat.config.js";
 import { paginate } from "../utils/paginate.js";
 import { redis } from "../config/redis.js";
-import { publishSeatExpirationDLX } from "../config/rabbitmq.js";
 import { SEAT_STATUS } from "../utils/seatStatus.js";
+import { Producer } from "../rabbitmq/producer.js";
 
 export const create = async (payload) => {
   return await supabase.from("show_time_seats").insert(payload).single();
@@ -109,10 +109,11 @@ export const holdSeat = async (showTimeSeatId, userId, ttlSeconds = 600) => {
   });
 
   // Publish delayed message to RabbitMQ for expiration check
-  await publishSeatExpirationDLX(
+  await Producer.seatExpiration(
     { showTimeSeatId, userId, heldAt: holdData.heldAt },
-    ttlSeconds * 1000, // Convert to milliseconds
-  ); // Update database status to HOLDING
+    ttlSeconds * 1000 // Convert to milliseconds
+  );
+  // Update database status to HOLDING
   const { data: updatedSeat, error: updateError } = await supabase
     .from("show_time_seats")
     .update({ status_seat: SEAT_STATUS.HOLDING })
@@ -255,4 +256,61 @@ export const bulkCancelHoldSeats = async (showTimeSeatIds, userId) => {
   }
 
   return { data: results, error: null };
+};
+
+export const handleSeatExpiration = async (showTimeSeatId, userId) => {
+  try {
+    // First check database status - this is the source of truth
+    const { data: seat, error: seatError } = await supabase
+      .from("show_time_seats")
+      .select("status_seat")
+      .eq("id", showTimeSeatId)
+      .maybeSingle();
+
+    if (seatError) {
+      console.error(`[SeatExpiration] Failed to get seat ${showTimeSeatId}:`, seatError);
+      return { success: false, error: seatError };
+    }
+
+    if (!seat) {
+      console.log(`[SeatExpiration] Seat ${showTimeSeatId} not found, skipping`);
+      return { success: true, data: null };
+    }
+
+    // Only release if seat is still in HOLDING status
+    // If it's BOOKED or AVAILABLE, it means user either purchased or cancelled manually
+    if (seat.status_seat !== SEAT_STATUS.HOLDING) {
+      console.log(`[SeatExpiration] Seat ${showTimeSeatId} status is ${seat.status_seat}, not HOLDING. Skipping.`);
+      return { success: true, data: null };
+    }
+
+    // Clean up Redis key if it still exists (it might have expired already)
+    const redisKey = `seat:hold:${showTimeSeatId}:${userId}`;
+    await redis.del(redisKey);
+
+    // Update database status back to AVAILABLE
+    const { data, error } = await supabase
+      .from("show_time_seats")
+      .update({ status_seat: SEAT_STATUS.AVAILABLE })
+      .eq("id", showTimeSeatId)
+      .eq("status_seat", SEAT_STATUS.HOLDING) // Double-check to prevent race condition
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.error(`[SeatExpiration] Failed to release seat ${showTimeSeatId}:`, error);
+      return { success: false, error };
+    }
+
+    if (data) {
+      console.log(`[SeatExpiration] Successfully released seat ${showTimeSeatId} for user ${userId}`);
+    } else {
+      console.log(`[SeatExpiration] Seat ${showTimeSeatId} was already changed, no update needed`);
+    }
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error(`[SeatExpiration] Error handling seat expiration:`, error);
+    return { success: false, error };
+  }
 };

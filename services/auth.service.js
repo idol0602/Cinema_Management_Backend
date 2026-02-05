@@ -3,7 +3,8 @@ import bcrypt from "bcryptjs";
 import { v4 as uuid } from "uuid";
 import { env } from "../config/env.js";
 import * as userRepo from "../repositories/user.repo.js";
-import { sendMail } from "../utils/mail.js";
+import { Producer } from "../rabbitmq/producer.js";
+import { TYPE_MAIL } from "../utils/mail.js";
 
 const generateToken = (user) => {
   return jwt.sign(
@@ -125,27 +126,22 @@ export const forgotPassword = async (email) => {
     env.CLIENT_URL || process.env.CLIENT_URL
   }/reset-password/${token}`;
 
-  const info = await sendMail({
+  const payload = {
     to: user.email,
-    subject: "Reset mật khẩu",
-    html: `
-      <p>Bạn yêu cầu đặt lại mật khẩu</p>
-      <a href="${resetLink}">Đặt lại mật khẩu</a>
-      <p>Link hết hạn sau 15 phút</p>
-    `,
-  });
+    resetData: {
+      userName: user.name || "Người dùng",
+      userEmail: user.email,
+      resetLink: resetLink,
+      expirationTime: "15 phút",
+    },
+  }
 
-  if (info.accepted.length > 0) {
-    return {
+  Producer.mail({type: TYPE_MAIL.FORGOT_PASSWORD, payload})
+
+  return {
       success: true,
       message: "Link reset đã được gửi tới email",
     };
-  } else {
-    return {
-      success: false,
-      message: "Có lỗi xảy ra",
-    };
-  }
 };
 
 export const resetPassword = async ({ token, newPassword }) => {

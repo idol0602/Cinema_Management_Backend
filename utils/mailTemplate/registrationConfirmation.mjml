@@ -1,0 +1,224 @@
+<mjml>
+  <mj-head>
+    <mj-title>Xác Nhận Đăng Ký - META CINEMA</mj-title>
+    <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Inter, Arial, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="1.6" />
+      <mj-section background-color="#ffffff" padding="20px" />
+      <mj-button background-color="#CD853F" border-radius="8px" font-size="16px" font-weight="600" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f4f4f4">
+    <!-- Header -->
+    <mj-section background-color="#0f0f1e" padding="30px 20px">
+      <mj-column>
+        <mj-image src="https://res.cloudinary.com/dp1w9oshb/image/upload/v1770277941/logo_dawtwd.png" alt="META CINEMA" width="300px" />
+        <mj-text align="center" color="#CD853F" font-size="14px" padding-top="10px">
+          Rạp Chiếu Phim Hàng Đầu Việt Nam
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Welcome Icon -->
+    <mj-section background-color="#ffffff" padding="40px 20px 20px">
+      <mj-column>
+        <mj-text align="center" font-size="60px">
+          🎉
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Main Content -->
+    <mj-section background-color="#ffffff" padding="20px 20px 30px">
+      <mj-column>
+        <mj-text align="center" font-size="24px" font-weight="700" color="#1a1a2e">
+          Chào Mừng Đến Với META CINEMA!
+        </mj-text>
+        <mj-text align="center" color="#666666" padding-top="10px">
+          Cảm ơn bạn đã đăng ký tài khoản
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Personalized Greeting -->
+    <mj-section background-color="#ffffff" padding="0px 20px 20px">
+      <mj-column>
+        <mj-text color="#666666">
+          Xin chào <span style="font-weight: 600; color: #1a1a2e;">{{userName}}</span>,
+        </mj-text>
+        <mj-text color="#666666" padding-top="15px">
+          Chúc mừng! Tài khoản của bạn đã được tạo thành công. Giờ đây bạn có thể trải nghiệm 
+          tất cả các dịch vụ tuyệt vời tại META CINEMA.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Account Info -->
+    <mj-section background-color="#f8f3ff" padding="20px" border-radius="12px">
+      <mj-column>
+        <mj-text font-weight="700" color="#1a1a2e" font-size="16px">
+          Thông Tin Tài Khoản
+        </mj-text>
+        <mj-divider border-color="#d0c5f0" border-width="1px" />
+        <mj-text color="#666666">
+          <strong>Email:</strong> {{userEmail}}
+        </mj-text>
+        <mj-text color="#666666">
+          <strong>Họ tên:</strong> {{userName}}
+        </mj-text>
+        <mj-text color="#666666">
+          <strong>Ngày đăng ký:</strong> {{registrationDate}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Verify Email Button (if needed) -->
+    {{#needsVerification}}
+    <mj-section background-color="#ffffff" padding="30px 20px 10px">
+      <mj-column>
+        <mj-text align="center" font-weight="700" color="#1a1a2e" font-size="16px">
+          Xác Thực Email
+        </mj-text>
+        <mj-text align="center" color="#666666" padding-top="5px">
+          Vui lòng xác thực email của bạn để kích hoạt toàn bộ tính năng
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="20px">
+      <mj-column>
+        <mj-button href="{{verificationLink}}" background-color="#CD853F" color="#ffffff" padding="15px 40px">
+          Xác Thực Email Ngay
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="0px 20px 20px">
+      <mj-column>
+        <mj-text align="center" color="#999999" font-size="12px">
+          Hoặc copy link sau vào trình duyệt:
+        </mj-text>
+        <mj-text align="center" color="#CD853F" font-size="12px" padding-top="5px">
+          <a href="{{verificationLink}}" style="color: #CD853F; word-break: break-all;">{{verificationLink}}</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    {{/needsVerification}}
+
+    <!-- Benefits Section -->
+    <mj-section background-color="#ffffff" padding="30px 20px 20px">
+      <mj-column>
+        <mj-text font-weight="700" color="#1a1a2e" font-size="18px" align="center">
+          Quyền Lợi Thành Viên
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="10px 20px">
+      <mj-column width="15%">
+        <mj-text align="center" font-size="36px">🎬</mj-text>
+      </mj-column>
+      <mj-column width="85%">
+        <mj-text font-weight="600" color="#1a1a2e">Đặt Vé Online Dễ Dàng</mj-text>
+        <mj-text color="#666666" font-size="13px">
+          Đặt vé nhanh chóng, chọn ghế thoải mái ngay trên điện thoại
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="10px 20px">
+      <mj-column width="15%">
+        <mj-text align="center" font-size="36px">🎁</mj-text>
+      </mj-column>
+      <mj-column width="85%">
+        <mj-text font-weight="600" color="#1a1a2e">Ưu Đãi Độc Quyền</mj-text>
+        <mj-text color="#666666" font-size="13px">
+          Nhận thông báo về các chương trình khuyến mãi và sự kiện đặc biệt
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="10px 20px">
+      <mj-column width="15%">
+        <mj-text align="center" font-size="36px">⭐</mj-text>
+      </mj-column>
+      <mj-column width="85%">
+        <mj-text font-weight="600" color="#1a1a2e">Điểm Thưởng Tích Lũy</mj-text>
+        <mj-text color="#666666" font-size="13px">
+          Mỗi lần mua vé, tích điểm để đổi quà và giảm giá
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#ffffff" padding="10px 20px">
+      <mj-column width="15%">
+        <mj-text align="center" font-size="36px">🍿</mj-text>
+      </mj-column>
+      <mj-column width="85%">
+        <mj-text font-weight="600" color="#1a1a2e">Combo Bắp Nước Hấp Dẫn</mj-text>
+        <mj-text color="#666666" font-size="13px">
+          Đặt trước combo bắp nước, nhận ngay tại quầy không cần chờ đợi
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- CTA Section -->
+    <mj-section background-color="#f8f3ff" padding="30px 20px" border-radius="12px">
+      <mj-column>
+        <mj-text align="center" font-weight="700" color="#1a1a2e" font-size="18px">
+          Sẵn Sàng Cho Trải Nghiệm Điện Ảnh?
+        </mj-text>
+        <mj-text align="center" color="#666666" padding-top="10px">
+          Khám phá các bộ phim đang chiếu và đặt vé ngay hôm nay!
+        </mj-text>
+        <mj-button href="{{websiteUrl}}" background-color="#CD853F" color="#ffffff" padding="15px 40px">
+          Khám Phá Ngay
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Social & App Download -->
+    <mj-section background-color="#ffffff" padding="30px 20px">
+      <mj-column>
+        <mj-text align="center" color="#666666" font-size="14px" font-weight="600">
+          Kết Nối Với Chúng Tôi
+        </mj-text>
+        <mj-social mode="horizontal" align="center" icon-size="35px" padding-top="15px">
+          <mj-social-element name="facebook" href="https://facebook.com/metacinema" />
+          <mj-social-element name="instagram" href="https://instagram.com/metacinema" />
+          <mj-social-element name="youtube" href="https://youtube.com/metacinema" />
+          <mj-social-element name="twitter" href="https://twitter.com/metacinema" />
+        </mj-social>
+      </mj-column>
+    </mj-section>
+
+    <!-- Support Info -->
+    <mj-section background-color="#ffffff" padding="20px">
+      <mj-column>
+        <mj-divider border-color="#e0e0e0" border-width="1px" />
+        <mj-text align="center" color="#666666" font-size="13px" padding-top="20px">
+          Cần hỗ trợ? Liên hệ với chúng tôi:
+        </mj-text>
+        <mj-text align="center" color="#CD853F" font-size="13px" font-weight="600">
+          Email: support@metacinema.vn | Hotline: 1900-xxxx
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section background-color="#0f0f1e" padding="30px 20px">
+      <mj-column>
+        <mj-image src="https://res.cloudinary.com/dp1w9oshb/image/upload/v1770277941/logo_dawtwd.png" alt="META CINEMA" width="200px" />
+        <mj-text align="center" color="#CD853F" font-size="12px" padding-top="10px">
+          Trải nghiệm điện ảnh đỉnh cao
+        </mj-text>
+        <mj-divider border-color="#333333" border-width="1px" padding="20px 0" />
+        <mj-text align="center" color="#666666" font-size="11px">
+          Email này được gửi tự động, vui lòng không trả lời.<br/>
+          © 2026 META CINEMA. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

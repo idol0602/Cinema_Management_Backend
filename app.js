@@ -39,6 +39,7 @@ import vnpayRoutes from "./routes/payment/vnpay.route.js";
 import chatBotRoutes from "./routes/chatbot.route.js";
 import statisticalRoutes from "./routes/statistical.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
+import {connectRabbitMQ} from "./config/rabbitmq.js"
 
 const app = express();
 
@@ -57,10 +58,15 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
+// Serve static files from public directory (for logo in emails, etc.)
+app.use(express.static("public"));
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === "development" ? 1000 : 100,
 });
+
+connectRabbitMQ();
 
 // app.use(limiter);
 
