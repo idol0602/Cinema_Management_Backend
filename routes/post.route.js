@@ -7,6 +7,7 @@ import {
 } from "../validators/post.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { postUpload } from "../middlewares/upload.js";
 import { METHODS } from "../utils/method.js";
 
 const rootPath = "/posts";
@@ -20,6 +21,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  postUpload.single("image"),
   validate(createPostSchema),
   controller.create,
 );
@@ -27,6 +29,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
+  postUpload.single("image"),
   validate(updatePostSchema),
   controller.update,
 );

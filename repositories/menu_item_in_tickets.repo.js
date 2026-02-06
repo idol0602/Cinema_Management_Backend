@@ -3,7 +3,7 @@ import { menuItemInTicketPaginateConfig } from "../config/paginate/menu_item_in_
 import { paginate } from "../utils/paginate.js";
 
 export const create = async (payload) => {
-  return await supabase.from("menu_item_in_tickets").insert(payload).single();
+  return await supabase.from("menu_item_in_tickets").insert(payload).select().single();
 };
 
 export const findAll = async () => {

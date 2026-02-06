@@ -7,6 +7,7 @@ import {
 } from "../validators/combos.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { comboUpload } from "../middlewares/upload.js";
 import { METHODS } from "../utils/method.js";
 
 const rootPath = "/combos";
@@ -40,6 +41,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  comboUpload.single("image"),
   validate(createComboAndRelationSchema),
   controller.create,
 );
@@ -47,6 +49,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
+  comboUpload.single("image"),
   validate(updateComboAndRelationSchema),
   controller.update,
 );

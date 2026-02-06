@@ -7,6 +7,7 @@ import {
 } from "../validators/event.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { eventUpload } from "../middlewares/upload.js";
 import { METHODS } from "../utils/method.js";
 
 const rootPath = "/events";
@@ -34,6 +35,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  eventUpload.single("image"),
   validate(createEventSchema),
   controller.create,
 );
@@ -41,6 +43,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
+  eventUpload.single("image"),
   validate(updateEventSchema),
   controller.update,
 );

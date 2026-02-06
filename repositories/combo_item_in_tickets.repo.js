@@ -3,7 +3,7 @@ import { comboItemInTicketPaginateConfig } from "../config/paginate/combo_item_i
 import { paginate } from "../utils/paginate.js";
 
 export const create = async (payload) => {
-  return await supabase.from("combo_item_in_tickets").insert(payload).single();
+  return await supabase.from("combo_item_in_tickets").insert(payload).select().single();
 };
 
 export const findAll = async () => {

@@ -7,6 +7,7 @@ import {
 } from "../validators/menu_items.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { menuItemUpload } from "../middlewares/upload.js";
 import { METHODS } from "../utils/method.js";
 
 const rootPath = "/menu-items";
@@ -34,6 +35,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  menuItemUpload.single("image"),
   validate(createMenuItemSchema),
   controller.create,
 );
@@ -41,6 +43,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
+  menuItemUpload.single("image"),
   validate(updateMenuItemSchema),
   controller.update,
 );

@@ -3,7 +3,7 @@ import { ticketPaginateConfig } from "../config/paginate/ticket.config.js";
 import { paginate } from "../utils/paginate.js";
 
 export const create = async (payload) => {
-  return await supabase.from("tickets").insert(payload).single();
+  return await supabase.from("tickets").insert(payload).select().single();
 };
 
 export const findAll = async () => {

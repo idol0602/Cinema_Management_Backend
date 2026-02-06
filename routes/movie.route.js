@@ -8,6 +8,7 @@ import {
   updateMovieSchema,
 } from "../validators/movie.schema.js";
 import { uploadExcel } from "../middlewares/upload.middleware.js";
+import { movieUpload } from "../middlewares/upload.js";
 import { METHODS } from "../utils/method.js";
 
 const rootPath = "/movies";
@@ -37,6 +38,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  movieUpload.single("image"),
   validate(createMovieSchema),
   controller.create,
 );
@@ -53,6 +55,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
+  movieUpload.single("image"),
   validate(updateMovieSchema),
   controller.update,
 );

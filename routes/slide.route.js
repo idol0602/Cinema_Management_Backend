@@ -7,6 +7,7 @@ import {
 } from "../validators/slide.schema.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
+import { slideUpload } from "../middlewares/upload.js";
 import { METHODS } from "../utils/method.js";
 
 const rootPath = "/slides";
@@ -20,6 +21,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  slideUpload.single("image"),
   validate(createSlideSchema),
   controller.create,
 );
@@ -27,6 +29,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
+  slideUpload.single("image"),
   validate(updateSlideSchema),
   controller.update,
 );

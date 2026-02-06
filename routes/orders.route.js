@@ -6,6 +6,7 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 import {
   createOrderSchema,
   updateOrderSchema,
+  processOrderSchema,
 } from "../validators/order.schema.js";
 import { METHODS } from "../utils/method.js";
 
@@ -30,6 +31,14 @@ router.put(
   authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateOrderSchema),
   controller.update,
+);
+
+router.post(
+  "/process",
+  auth,
+  authorize(rootPath, METHODS.POST),
+  validate(processOrderSchema),
+  controller.handleOrderAndRelatedData,
 );
 
 export default router;

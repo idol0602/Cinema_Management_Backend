@@ -103,10 +103,8 @@ export const holdSeat = async (showTimeSeatId, userId, ttlSeconds = 600) => {
     expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
   };
 
-  await redis.set(redisKey, JSON.stringify(holdData), {
-    EX: ttlSeconds,
-    NX: true,
-  });
+  // Set hold in Redis WITHOUT TTL - RabbitMQ will handle expiration check
+  await redis.set(redisKey, JSON.stringify(holdData));
 
   // Publish delayed message to RabbitMQ for expiration check
   await Producer.seatExpiration(
@@ -186,6 +184,13 @@ export const getHoldInfo = async (showTimeSeatId, userId) => {
   return { data: JSON.parse(holdData), error: null };
 };
 
+// Clear hold from Redis when order is confirmed (seat is now BOOKED, no need to update status)
+export const clearHoldOnConfirm = async (showTimeSeatId, userId) => {
+  const redisKey = `seat:hold:${showTimeSeatId}:${userId}`;
+  await redis.del(redisKey);
+  return { data: { cleared: true }, error: null };
+};
+
 export const getAllHeldSeatsByUserId = async (userId) => {
   try {
     // Get all keys matching pattern seat:hold:*:userId
@@ -260,7 +265,16 @@ export const bulkCancelHoldSeats = async (showTimeSeatIds, userId) => {
 
 export const handleSeatExpiration = async (showTimeSeatId, userId) => {
   try {
-    // First check database status - this is the source of truth
+    // First check if Redis key still exists
+    const redisKey = `seat:hold:${showTimeSeatId}:${userId}`;
+    const existingHold = await redis.get(redisKey);
+
+    if (!existingHold) {
+      console.log(`[SeatExpiration] Redis key for seat ${showTimeSeatId} not found (user cancelled or completed), skipping`);
+      return { success: true, data: null };
+    }
+
+    // Check database status - this is the source of truth
     const { data: seat, error: seatError } = await supabase
       .from("show_time_seats")
       .select("status_seat")
@@ -273,19 +287,20 @@ export const handleSeatExpiration = async (showTimeSeatId, userId) => {
     }
 
     if (!seat) {
-      console.log(`[SeatExpiration] Seat ${showTimeSeatId} not found, skipping`);
+      console.log(`[SeatExpiration] Seat ${showTimeSeatId} not found, cleaning up Redis`);
+      await redis.del(redisKey);
       return { success: true, data: null };
     }
 
     // Only release if seat is still in HOLDING status
     // If it's BOOKED or AVAILABLE, it means user either purchased or cancelled manually
     if (seat.status_seat !== SEAT_STATUS.HOLDING) {
-      console.log(`[SeatExpiration] Seat ${showTimeSeatId} status is ${seat.status_seat}, not HOLDING. Skipping.`);
+      console.log(`[SeatExpiration] Seat ${showTimeSeatId} status is ${seat.status_seat}, not HOLDING. Cleaning up Redis.`);
+      await redis.del(redisKey);
       return { success: true, data: null };
     }
 
-    // Clean up Redis key if it still exists (it might have expired already)
-    const redisKey = `seat:hold:${showTimeSeatId}:${userId}`;
+    // Clean up Redis key after validation passed
     await redis.del(redisKey);
 
     // Update database status back to AVAILABLE

@@ -1,5 +1,6 @@
 import * as service from "../services/order.service.js";
 import { success, fail } from "../utils/response.js";
+import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
 
 export const create = async (req, res, next) => {
   try {
@@ -77,6 +78,20 @@ export const getOrderDetails = async (req, res, next) => {
       return fail(res, error);
     }
     return success(res, data, "Get order details successfully");
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const handleOrderAndRelatedData = async (req, res, next) => {
+  try {
+    const payload = req.body;
+    payload.order.payment_status = PAYMENT_STATUS.COMPLETED;
+    const { data, error } = await service.handleOrderAndRelatedData(payload);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Process order successfully", 201);
   } catch (e) {
     next(e);
   }

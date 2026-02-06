@@ -4,7 +4,7 @@ import { paginate } from "../utils/paginate.js";
 import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
 
 export const create = async (order) => {
-  return await supabase.from("orders").insert(order).single();
+  return await supabase.from("orders").insert(order).select().single();
 };
 
 export const findAll = async () => {
@@ -20,7 +20,7 @@ export const findById = async (id) => {
 };
 
 export const update = async (id, data) => {
-  return await supabase.from("orders").update(data).eq("id", id);
+  return await supabase.from("orders").update(data).eq("id", id).select().single();
 };
 
 export const findAndPaginate = async (query) => {
