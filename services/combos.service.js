@@ -1,7 +1,14 @@
   import { v4 as uuidv4 } from "uuid";
 import * as repo from "../repositories/combos.repo.js";
+import { getCache, setCacheWithTTL } from "../redis/cache.js";
+import { CACHE_PREFIX, TTL, buildCacheKey } from "../redis/cacheKeys.js";
+import { Producer } from "../rabbitmq/producer.js";
 
-export const create = (payload) => {
+const invalidateCache = () => {
+  Producer.deleteCache(`${CACHE_PREFIX.COMBOS}:*`);
+};
+
+export const create = async (payload) => {
   const { combo, comboItems = [], comboMovie = {}, comboEvent = {} } = payload;
 
   const p_combo = {
@@ -43,7 +50,9 @@ export const create = (payload) => {
       }
     : {};
 
-  return repo.create({ p_combo, p_combo_items, p_combo_movie, p_combo_event });
+  const result = await repo.create({ p_combo, p_combo_items, p_combo_movie, p_combo_event });
+  if (!result.error) invalidateCache();
+  return result;
 };
 
 export const update = async (id, payload) => {
@@ -51,7 +60,9 @@ export const update = async (id, payload) => {
   // or if it's a simple update (backward compatibility)
   if (!payload.combo) {
     // Simple update - just update the combo directly
-    return repo.update(id, payload);
+    const result = await repo.update(id, payload);
+    if (!result.error) invalidateCache();
+    return result;
   }
 
   const { combo, comboItems = [], comboMovie = {}, comboEvent = {} } = payload;
@@ -120,11 +131,33 @@ export const update = async (id, payload) => {
   if (result.data && result.data.success === false) {
     return { data: null, error: result.data.error || "Update failed" };
   }
+  
+  invalidateCache();
   return { data: result.data, error: null };
 };
 
 export const findAll = () => repo.findAll();
 export const findById = (id) => repo.findById(id);
-export const remove = (id) => repo.remove(id);
-export const findAndPaginate = (query) => repo.findAndPaginate(query);
+
+export const remove = async (id) => {
+  const result = await repo.remove(id);
+  if (!result.error) invalidateCache();
+  return result;
+};
+
+export const findAndPaginate = async (query) => {
+  const cacheKey = buildCacheKey(CACHE_PREFIX.COMBOS, query);
+  
+  const cached = await getCache(cacheKey);
+  if (cached) return cached;
+  
+  const result = await repo.findAndPaginate(query);
+  
+  if (!result.error) {
+    await setCacheWithTTL(cacheKey, result, TTL.WARM);
+  }
+  
+  return result;
+};
+
 export const getDetails = (id) => repo.getDetails(id);

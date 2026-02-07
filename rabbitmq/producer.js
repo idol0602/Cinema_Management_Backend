@@ -14,5 +14,9 @@ export const Producer = {
             Buffer.from(JSON.stringify(data)),
             { headers: { "x-delay": delayMs } }
         );
+    },
+    deleteCache : async (pattern) => {
+        const channel = getChannel();
+        channel.publish(EXCHANGE.DELETE_CACHE.exchange, EXCHANGE.DELETE_CACHE.bindingKey, Buffer.from(JSON.stringify({ pattern })));
     }
 }

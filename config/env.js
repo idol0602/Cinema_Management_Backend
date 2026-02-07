@@ -22,6 +22,7 @@ export const env = {
   VNPAY_HOST: process.env.VNPAY_HOST,
   VNPAY_RETURN_URL: process.env.VNPAY_RETURN_URL,
   VNPAY_IP_ADDRESS: process.env.VNPAY_IP_ADDRESS,
-  REDIS_URL: process.env.REDIS_URL,
+  REDIS_URL_BUSINESS: process.env.REDIS_URL_BUSINESS,
+  REDIS_URL_CACHE: process.env.REDIS_URL_CACHE,
   RABBITMQ_URL: process.env.RABBITMQ_URL,
 };

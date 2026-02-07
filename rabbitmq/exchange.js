@@ -18,4 +18,10 @@ export const EXCHANGE = {
         bindingKey : "seat_expiration_key",
         arguments : { "x-delayed-type": "direct" },
     },
+    DELETE_CACHE : {
+        exchange : "delete_cache_exchange",
+        queue : "delete_cache_queue",
+        type : "direct",
+        bindingKey : "delete_cache_binding_key",
+    }
 }
