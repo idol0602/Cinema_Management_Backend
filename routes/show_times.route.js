@@ -9,6 +9,8 @@ import {
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
 import { METHODS } from "../utils/method.js";
+import { rateLimitByUser } from "../middlewares/rateLimit.middleware.js";
+import { RATE_LIMIT_ACTION } from "../utils/rateLimitAction.js";
 
 const rootPath = "/show-times";
 const router = Router();
@@ -24,6 +26,7 @@ router.post(
   "/bulk-create",
   auth,
   authorize(rootPath + "/bulk-create", METHODS.POST),
+  rateLimitByUser(RATE_LIMIT_ACTION.CREATE_SHOWTIME),
   validate(bulkCreateShowTimeSchema),
   controller.bulkCreate,
 );
@@ -31,6 +34,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  rateLimitByUser(RATE_LIMIT_ACTION.CREATE_SHOWTIME),
   validate(createShowTimeSchema),
   controller.create,
 );
@@ -38,6 +42,7 @@ router.put(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.PUT),
+  rateLimitByUser(RATE_LIMIT_ACTION.UPDATE_SHOWTIME),
   validate(updateShowTimeSchema),
   controller.update,
 );
@@ -45,6 +50,7 @@ router.delete(
   "/:id",
   auth,
   authorize(rootPath + "/:id", METHODS.DELETE),
+  rateLimitByUser(RATE_LIMIT_ACTION.DELETE_SHOWTIME),
   controller.remove,
 );
 

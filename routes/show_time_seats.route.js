@@ -13,6 +13,8 @@ import {
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
 import { METHODS } from "../utils/method.js";
+import { rateLimitByUser } from "../middlewares/rateLimit.middleware.js";
+import { RATE_LIMIT_ACTION } from "../utils/rateLimitAction.js";
 
 const rootPath = "/show-time-seats";
 const router = Router();
@@ -60,6 +62,7 @@ router.delete(
 router.post(
   "/hold/bulk",
   auth,
+  rateLimitByUser(RATE_LIMIT_ACTION.HOLD_SEAT),
   validate(bulkHoldSeatsSchema),
   controller.bulkHoldSeats,
 );
@@ -67,17 +70,19 @@ router.post(
 router.delete(
   "/hold/bulk",
   auth,
+  rateLimitByUser(RATE_LIMIT_ACTION.CANCEL_HOLD_SEAT),
   validate(bulkCancelHoldSeatsSchema),
   controller.bulkCancelHoldSeats,
 );
 
 // Single seat hold operations
-router.post("/hold/:id", auth, validate(holdSeatSchema), controller.holdSeat);
+router.post("/hold/:id", auth, rateLimitByUser(RATE_LIMIT_ACTION.HOLD_SEAT), validate(holdSeatSchema), controller.holdSeat);
 
-router.delete("/hold/:id", auth, controller.cancelHoldSeat);
+router.delete("/hold/:id", auth, rateLimitByUser(RATE_LIMIT_ACTION.CANCEL_HOLD_SEAT), controller.cancelHoldSeat);
 
 router.get("/hold/:id", auth, controller.getHoldInfo);
 
 router.get("/hold-by-user/all", auth, controller.getAllHeldSeats);
 
 export default router;
+

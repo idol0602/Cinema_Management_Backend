@@ -9,6 +9,7 @@ import { generateQrBuffer } from "../utils/qr.js";
 import { generateQrToken } from "../utils/qrToken.js";
 import { SEAT_STATUS } from "../utils/seatStatus.js";
 import { uploadBuffer } from "./cloudinary.service.js";
+import { validateBookingTime, processOrderInventory } from "./inventory.service.js";
 
 export const create = (order) => {
   const movieWithId = {
@@ -35,6 +36,19 @@ export const handleOrderAndRelatedData = async (payload) => {
   } = payload;
 
   try {
+    // 0. Validate booking time (5 minutes before showtime cutoff)
+    if (showTime?.start_time) {
+      const timeValidation = validateBookingTime(showTime.start_time, 5);
+      if (!timeValidation.valid) {
+        console.error("⏰ Booking time validation failed:", timeValidation.message);
+        return { 
+          data: null, 
+          error: timeValidation.message 
+        };
+      }
+      console.log(`⏰ Booking time valid: ${timeValidation.message}`);
+    }
+
     // 1. Update order (without changing payment_status - left for flexibility)
     const { data: orderData, error: orderError } = await repo.update(order.id, {
       ...order
@@ -135,13 +149,26 @@ export const handleOrderAndRelatedData = async (payload) => {
       }
     }
 
+    // 5. Deduct inventory after successful payment processing
+    const inventoryResult = await processOrderInventory(
+      menuItemInTickets || [],
+      comboItemInTickets || []
+    );
+    
+    if (!inventoryResult.success) {
+      console.error("⚠️ Inventory deduction had errors:", inventoryResult.error);
+      // Note: We don't fail the order here, just log the issue
+      // In production, you might want to handle this differently
+    }
+
     // Return structured response with all data
     return {
       data: {
         order: orderData || order,
         tickets: ticketsData,
         comboItemInTickets: comboItemsData,
-        menuItemInTickets: menuItemsData
+        menuItemInTickets: menuItemsData,
+        inventoryResult: inventoryResult.results
       },
       error: null
     };
@@ -151,3 +178,4 @@ export const handleOrderAndRelatedData = async (payload) => {
     return { data: null, error: error.message || error };
   }
 };
+

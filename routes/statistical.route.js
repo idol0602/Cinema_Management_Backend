@@ -3,6 +3,8 @@ import * as controller from "../controllers/statistical.controller.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
 import { METHODS } from "../utils/method.js";
+import { rateLimitByUser } from "../middlewares/rateLimit.middleware.js";
+import { RATE_LIMIT_ACTION } from "../utils/rateLimitAction.js";
 
 const rootPath = "/statistics";
 const router = Router();
@@ -12,6 +14,7 @@ router.get(
   "/",
   auth,
   authorize(rootPath, METHODS.GET),
+  rateLimitByUser(RATE_LIMIT_ACTION.STATISTICS),
   controller.getAllStatistics
 );
 

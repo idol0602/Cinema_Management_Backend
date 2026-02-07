@@ -9,6 +9,8 @@ import {
   processOrderSchema,
 } from "../validators/order.schema.js";
 import { METHODS } from "../utils/method.js";
+import { rateLimitByUser } from "../middlewares/rateLimit.middleware.js";
+import { RATE_LIMIT_ACTION } from "../utils/rateLimitAction.js";
 
 const rootPath = "/orders";
 const router = Router();
@@ -22,6 +24,7 @@ router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
+  rateLimitByUser(RATE_LIMIT_ACTION.CREATE_ORDER),
   validate(createOrderSchema),
   controller.create,
 );
@@ -37,8 +40,10 @@ router.post(
   "/process",
   auth,
   authorize(rootPath, METHODS.POST),
+  rateLimitByUser(RATE_LIMIT_ACTION.PROCESS_ORDER),
   validate(processOrderSchema),
   controller.handleOrderAndRelatedData,
 );
 
 export default router;
+
