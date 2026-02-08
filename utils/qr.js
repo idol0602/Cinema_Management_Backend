@@ -12,7 +12,7 @@ export const generateQrCode = (token) => {
       dark: "#000000",
       light: "#ffffff",
     },
-    errorCorrectionLevel: "H",
+    errorCorrectionLevel: "M",
     width: 300,
     margin: 2,
   });

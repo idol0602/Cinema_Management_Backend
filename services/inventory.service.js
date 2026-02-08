@@ -1,6 +1,13 @@
 import * as menuItemRepo from "../repositories/menu_items.repo.js";
 import * as comboRepo from "../repositories/combos.repo.js";
 import { supabase } from "../config/supabase.js";
+import { CACHE_PREFIX } from "../redis/cacheKeys.js";
+import { Producer } from "../rabbitmq/producer.js";
+
+const invalidateCache = () => {
+  Producer.deleteCache(`${CACHE_PREFIX.MENU_ITEMS}:*`);
+};
+
 
 /**
  * Decrement stock for a single menu item
@@ -22,7 +29,21 @@ export const decrementMenuItemStock = async (itemId, quantity) => {
     }
 
     const currentStock = item?.num_instock || 0;
-    const newStock = Math.max(0, currentStock - quantity);
+    
+    // Check if sufficient stock exists
+    if (currentStock < quantity) {
+      return { 
+        data: null, 
+        error: {
+          message: `Insufficient stock for item ${itemId}. Requested: ${quantity}, Available: ${currentStock}`,
+          code: 'INSUFFICIENT_STOCK',
+          requested: quantity,
+          available: currentStock
+        }
+      };
+    }
+    
+    const newStock = currentStock - quantity;
 
     // Update stock
     const { data, error } = await supabase
@@ -35,7 +56,7 @@ export const decrementMenuItemStock = async (itemId, quantity) => {
     if (error) {
       return { data: null, error };
     }
-
+    invalidateCache();
     console.log(`📦 Inventory: Deducted ${quantity} from menu item ${itemId}. ${currentStock} -> ${newStock}`);
     return { data, error: null };
   } catch (error) {
@@ -190,6 +211,23 @@ export const processOrderInventory = async (menuItemInTickets = [], comboItemInT
         items: result.data,
         error: result.error
       });
+    }
+
+    // Check if any item failed
+    const hasMenuItemErrors = results.menuItems.some(item => !item.success);
+    const hasComboErrors = results.combos.some(combo => !combo.success);
+    const hasErrors = hasMenuItemErrors || hasComboErrors;
+
+    if (hasErrors) {
+      console.log("📦 Order inventory failed - insufficient stock:", results);
+      return { 
+        success: false, 
+        results, 
+        error: {
+          message: "Insufficient stock for one or more items",
+          code: 'INSUFFICIENT_STOCK'
+        }
+      };
     }
 
     console.log("📦 Order inventory processed successfully:", results);

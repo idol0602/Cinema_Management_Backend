@@ -9,7 +9,7 @@ import { generateQrBuffer } from "../utils/qr.js";
 import { generateQrToken } from "../utils/qrToken.js";
 import { SEAT_STATUS } from "../utils/seatStatus.js";
 import { uploadBuffer } from "./cloudinary.service.js";
-import { validateBookingTime, processOrderInventory } from "./inventory.service.js";
+import { validateBookingTime, processOrderInventory, validateStock } from "./inventory.service.js";
 
 export const create = (order) => {
   const movieWithId = {
@@ -48,6 +48,22 @@ export const handleOrderAndRelatedData = async (payload) => {
       }
       console.log(`⏰ Booking time valid: ${timeValidation.message}`);
     }
+
+    // 0.5. Validate stock BEFORE creating any order data
+    const comboIds = (comboItemInTickets || []).map(c => c.combo_id);
+    const stockValidation = await validateStock(menuItemInTickets || [], comboIds);
+    if (!stockValidation.valid) {
+      console.error("📦 Stock validation failed:", stockValidation.errors);
+      return { 
+        data: null, 
+        error: {
+          message: "Không đủ số lượng trong kho cho một hoặc nhiều sản phẩm",
+          code: 'INSUFFICIENT_STOCK',
+          details: stockValidation.errors
+        }
+      };
+    }
+    console.log("📦 Stock validation passed");
 
     // 1. Update order (without changing payment_status - left for flexibility)
     const { data: orderData, error: orderError } = await repo.update(order.id, {
@@ -156,9 +172,15 @@ export const handleOrderAndRelatedData = async (payload) => {
     );
     
     if (!inventoryResult.success) {
-      console.error("⚠️ Inventory deduction had errors:", inventoryResult.error);
-      // Note: We don't fail the order here, just log the issue
-      // In production, you might want to handle this differently
+      console.error("⚠️ Inventory deduction failed - insufficient stock:", inventoryResult.error);
+      return { 
+        data: null, 
+        error: {
+          message: "Không đủ số lượng trong kho cho một hoặc nhiều sản phẩm",
+          code: 'INSUFFICIENT_STOCK',
+          details: inventoryResult.results
+        }
+      };
     }
 
     // Return structured response with all data
