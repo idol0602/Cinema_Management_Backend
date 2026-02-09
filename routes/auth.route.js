@@ -14,6 +14,7 @@ const router = Router();
 
 router.post("/register", validate(registerSchema), rateLimitByIP(RATE_LIMIT_ACTION.REGISTER), controller.register);
 router.post("/login", validate(loginSchema), rateLimitByIP(RATE_LIMIT_ACTION.LOGIN), controller.login);
+router.post("/logout", auth, controller.logout);
 router.post("/forgot-password", rateLimitByIP(RATE_LIMIT_ACTION.FORGOT_PASSWORD), controller.forgotPassword);
 router.post(
   "/reset-password",
@@ -24,5 +25,6 @@ router.post(
 router.put("/update-profile/:id", auth, controller.updateProfile);
 
 export default router;
+
 
 

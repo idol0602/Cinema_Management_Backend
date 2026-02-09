@@ -5,13 +5,13 @@ import { env } from "../config/env.js";
 import * as userRepo from "../repositories/user.repo.js";
 import { Producer } from "../rabbitmq/producer.js";
 import { TYPE_MAIL } from "../utils/mail.js";
+import * as roleService from "../services/role.service.js"
+import * as tokenService from "./token.service.js";
+import { toVietnamTime } from "../utils/formatTime.js";
 
-const generateToken = (user) => {
-  return jwt.sign(
-    { id: user.id, role: user.role, email: user.email },
-    env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN },
-  );
+// Deprecated: Use tokenService.generateTokenWithVersion instead
+const generateToken = async (user) => {
+  return await tokenService.generateTokenWithVersion(user);
 };
 
 // actualy dont use in dashboard because admin create user, only login
@@ -21,11 +21,6 @@ export const register = async (payload) => {
     email,
     phone,
     password,
-    role,
-    is_online,
-    last_seen,
-    created_at,
-    is_active,
   } = payload;
 
   const { data: exists, error: findError } = await userRepo.findByEmail(email);
@@ -38,7 +33,7 @@ export const register = async (payload) => {
     error.statusCode = 400;
     return { data: null, error };
   }
-
+  const defaultRole = await roleService.findByName("Customer");
   const hashedPassword = await bcrypt.hash(password, 10);
   const userToCreate = {
     id: uuid(),
@@ -46,11 +41,11 @@ export const register = async (payload) => {
     email,
     phone,
     password: hashedPassword,
-    role,
-    is_online,
-    last_seen,
-    created_at,
-    is_active,
+    role: defaultRole.data.id,
+    is_online: false,
+    last_seen: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    is_active: true,
   };
 
   const { data, error } = await userRepo.create(userToCreate);
@@ -65,7 +60,21 @@ export const register = async (payload) => {
   }
 
   const { password: _pw, ...safeUser } = data;
-  const token = generateToken(data);
+  const token = await generateToken(data);
+  
+  // Save active session
+  await tokenService.saveActiveSession(data.id, token);
+
+  const mailPayload = {
+    to: data.email,
+    userData: {
+      userName: data.name || "Người dùng",
+      userEmail: data.email,
+      registrationDate: toVietnamTime(data.created_at),
+    },
+  }
+
+  Producer.mail({type: TYPE_MAIL.REGISTRATION_CONFIRMATION, payload: mailPayload})
   return {
     data: { user: safeUser, token },
     error: null,
@@ -99,7 +108,18 @@ export const login = async ({ email, password }) => {
   }
 
   const { password: _pw, ...safeUser } = user;
-  const token = generateToken(user);
+  
+  // Get old token and blacklist it (logout previous device)
+  const oldToken = await tokenService.getActiveSessionToken(user.id);
+  if (oldToken) {
+    await tokenService.revokeToken(oldToken);
+    console.log(`Revoked old token for user ${user.id} - logged in from new device`);
+  }
+  
+  const token = await generateToken(user);
+  
+  // Save new active session
+  await tokenService.saveActiveSession(user.id, token);
 
   return {
     data: { user: safeUser, token },
@@ -150,12 +170,19 @@ export const resetPassword = async ({ token, newPassword }) => {
     throw new Error("Token không hợp lệ");
   }
   const hashedPassword = await bcrypt.hash(newPassword, 10);
+  
+  // Revoke all existing tokens when password is reset
+  await tokenService.revokeAllUserTokens(decoded.userId);
+  
   return await userRepo.changePassword(decoded.userId, hashedPassword);
 };
 
 export const updateProfile = async ({ userId, payload }) => {
   const hashedPassword = await bcrypt.hash(payload.password, 10);
   const { password, ...updateData } = payload;
+  
+  // Check if password is being changed
+  const isPasswordChanged = password !== "hidden password";
 
   // Nếu password là "hidden password" thì không update password, chỉ update những field khác
   const dataToUpdate =
@@ -178,12 +205,26 @@ export const updateProfile = async ({ userId, payload }) => {
     return { data: null, error: err };
   }
 
+  // If password changed, revoke all existing tokens
+  if (isPasswordChanged) {
+    await tokenService.revokeAllUserTokens(userId);
+  }
+
   // Loại bỏ password trước khi trả về
   const { password: _pw, ...safeUser } = data;
-  const token = generateToken(data);
+  const token = await generateToken(data);
+  
+  // Save new active session
+  await tokenService.saveActiveSession(userId, token);
 
   return {
     data: { user: safeUser, token },
     error: null,
   };
+};
+
+export const logout = async (userId, token) => {
+  await tokenService.revokeToken(token);
+  await tokenService.clearActiveSession(userId);
+  return { success: true, message: "Logout successfully" };
 };

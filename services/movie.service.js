@@ -86,6 +86,7 @@ export const importFromExcel = async (filePath) => {
 
     // Insert bulk vào database
     const result = await repo.bulkCreate(validMovies);
+    if(!result.error) invalidateCache();
 
     return {
       data: result.data,
