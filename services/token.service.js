@@ -40,15 +40,15 @@ const hashToken = (token) => {
  * @returns {string} encrypted token
  */
 const encryptToken = (token) => {
-  const algorithm = 'aes-256-cbc';
-  const key = crypto.scryptSync(env.JWT_SECRET, 'salt', 32);
+  const algorithm = "aes-256-cbc";
+  const key = crypto.scryptSync(env.JWT_SECRET, "salt", 32);
   const iv = crypto.randomBytes(16);
-  
+
   const cipher = crypto.createCipheriv(algorithm, key, iv);
-  let encrypted = cipher.update(token, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  
-  return iv.toString('hex') + ':' + encrypted;
+  let encrypted = cipher.update(token, "utf8", "hex");
+  encrypted += cipher.final("hex");
+
+  return iv.toString("hex") + ":" + encrypted;
 };
 
 /**
@@ -58,20 +58,20 @@ const encryptToken = (token) => {
  */
 const decryptToken = (encryptedToken) => {
   try {
-    const algorithm = 'aes-256-cbc';
-    const key = crypto.scryptSync(env.JWT_SECRET, 'salt', 32);
-    
-    const parts = encryptedToken.split(':');
-    const iv = Buffer.from(parts[0], 'hex');
+    const algorithm = "aes-256-cbc";
+    const key = crypto.scryptSync(env.JWT_SECRET, "salt", 32);
+
+    const parts = encryptedToken.split(":");
+    const iv = Buffer.from(parts[0], "hex");
     const encrypted = parts[1];
-    
+
     const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+
     return decrypted;
   } catch (error) {
-    console.error('Error decrypting token:', error);
+    console.error("Error decrypting token:", error);
     return null;
   }
 };
@@ -113,16 +113,16 @@ export const incrementTokenVersion = async (userId) => {
  */
 export const generateTokenWithVersion = async (user) => {
   const tokenVersion = await getTokenVersion(user.id);
-  
+
   return jwt.sign(
-    { 
-      id: user.id, 
-      role: user.role, 
+    {
+      id: user.id,
+      role: user.role,
       email: user.email,
-      tokenVersion 
+      tokenVersion,
     },
     env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN }
+    { expiresIn: env.JWT_EXPIRES_IN },
   );
 };
 
@@ -137,12 +137,8 @@ export const saveActiveSession = async (userId, token) => {
     // Encrypt token trước khi lưu (để có thể decrypt lại khi cần blacklist)
     const encryptedToken = encryptToken(token);
     const ttl = parseJwtExpiry(env.JWT_EXPIRES_IN);
-    
-    await redis.setEx(
-      `session:user:${userId}`,
-      ttl,
-      encryptedToken
-    );
+
+    await redis.setEx(`session:user:${userId}`, ttl, encryptedToken);
   } catch (error) {
     console.error("Error saving active session:", error);
     throw error;
@@ -172,22 +168,24 @@ export const getActiveSessionToken = async (userId) => {
   try {
     const encryptedToken = await redis.get(`session:user:${userId}`);
     if (!encryptedToken) return null;
-    
+
     // Check if it's old format (hash) or new format (encrypted)
     // Old format: 64 hex chars (sha256 hash)
     // New format: 32 hex chars (iv) + ':' + encrypted data
-    if (!encryptedToken.includes(':')) {
+    if (!encryptedToken.includes(":")) {
       // Old hash format - can't decrypt, return null
-      console.log(`Old session format detected for user ${userId}, skipping blacklist`);
+      console.log(
+        `Old session format detected for user ${userId}, skipping blacklist`,
+      );
       return null;
     }
-    
+
     const decrypted = decryptToken(encryptedToken);
     if (!decrypted) {
       console.warn(`Failed to decrypt token for user ${userId}`);
       return null;
     }
-    
+
     return decrypted;
   } catch (error) {
     console.error("Error getting active session token:", error);
@@ -203,7 +201,7 @@ export const getActiveSessionToken = async (userId) => {
 export const revokeToken = async (token) => {
   try {
     const tokenHash = hashToken(token);
-    
+
     // Decode để lấy expiry time
     const decoded = jwt.decode(token);
     if (!decoded || !decoded.exp) {
@@ -216,11 +214,7 @@ export const revokeToken = async (token) => {
     const ttl = decoded.exp - now;
 
     if (ttl > 0) {
-      await redis.setEx(
-        `blacklist:token:${tokenHash}`,
-        ttl,
-        "revoked"
-      );
+      await redis.setEx(`blacklist:token:${tokenHash}`, ttl, "revoked");
     }
   } catch (error) {
     console.error("Error revoking token:", error);
@@ -237,13 +231,13 @@ export const revokeAllUserTokens = async (userId) => {
   try {
     // Get current active session token để blacklist
     const activeTokenHash = await getActiveSession(userId);
-    
+
     // Clear active session
     await redis.del(`session:user:${userId}`);
-    
+
     // Increment version để invalidate tất cả token cũ
     await incrementTokenVersion(userId);
-    
+
     console.log(`Revoked all tokens for user ${userId}`);
   } catch (error) {
     console.error("Error revoking all user tokens:", error);
@@ -278,16 +272,18 @@ export const isTokenActive = async (userId, token) => {
   try {
     const encryptedToken = await getActiveSession(userId);
     if (!encryptedToken) return false;
-    
+
     // Decrypt to get actual token
     const activeToken = decryptToken(encryptedToken);
     if (!activeToken) {
       // Can't decrypt (might be old format or corrupted)
       // For safety, reject the request
-      console.warn(`Cannot decrypt active session for user ${userId}, rejecting token`);
+      console.warn(
+        `Cannot decrypt active session for user ${userId}, rejecting token`,
+      );
       return false;
     }
-    
+
     return activeToken === token;
   } catch (error) {
     console.error("Error checking active token:", error);
@@ -325,4 +321,45 @@ export const clearActiveSession = async (userId) => {
     console.error("Error clearing active session:", error);
     throw error;
   }
+};
+
+/**
+ * Cookie options cho access token
+ * @returns {object} cookie options
+ */
+export const getCookieOptions = () => {
+  const isProduction = env.NODE_ENV === "production";
+  const maxAge = parseJwtExpiry(env.JWT_EXPIRES_IN) * 1000; // Convert to milliseconds
+
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "strict" : "lax",
+    maxAge: maxAge,
+    path: "/",
+  };
+};
+
+/**
+ * Set token cookie vào response
+ * @param {object} res - Express response
+ * @param {string} token - JWT token
+ */
+export const setTokenCookie = (res, token) => {
+  const options = getCookieOptions();
+  res.cookie("access_token", token, options);
+};
+
+/**
+ * Clear token cookie từ response
+ * @param {object} res - Express response
+ */
+export const clearTokenCookie = (res) => {
+  res.cookie("access_token", "", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 0,
+    path: "/",
+  });
 };

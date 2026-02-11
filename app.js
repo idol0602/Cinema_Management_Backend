@@ -2,6 +2,7 @@ import express from "express";
 import qs from "qs";
 import cors from "cors";
 import helmet from "helmet";
+import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.route.js";
 import authorizeRoutes from "./routes/authorize.route.js";
@@ -39,9 +40,11 @@ import vnpayRoutes from "./routes/payment/vnpay.route.js";
 import chatBotRoutes from "./routes/chatbot.route.js";
 import statisticalRoutes from "./routes/statistical.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
-import {connectRabbitMQ} from "./config/rabbitmq.js"
+import { connectRabbitMQ } from "./config/rabbitmq.js";
 
 const app = express();
+
+const allowedOrigins = [process.env.CLIENT_URL, process.env.DASHBOARD_URL];
 
 app.set("query parser", (str) =>
   qs.parse(str, {
@@ -54,7 +57,13 @@ app.set("query parser", (str) =>
   }),
 );
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }),
+);
+app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 

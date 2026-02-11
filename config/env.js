@@ -10,6 +10,7 @@ export const env = {
   MAIL_USER: process.env.MAIL_USER,
   MAIL_PASS: process.env.MAIL_PASS,
   CLIENT_URL: process.env.CLIENT_URL,
+  DASHBOARD_URL: process.env.DASHBOARD_URL,
   MOMO_PARTNER_CODE: process.env.MOMO_PARTNER_CODE,
   MOMO_ACCESS_KEY: process.env.MOMO_ACCESS_KEY,
   MOMO_SECRET_KEY: process.env.MOMO_SECRET_KEY,

@@ -28,7 +28,8 @@ export const findById = async (id) => {
     .from("users")
     .select("*")
     .eq("id", id)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .single();
 };
 
 export const update = async (id, data) => {

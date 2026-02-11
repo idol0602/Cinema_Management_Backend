@@ -4,10 +4,10 @@ import Handlebars from "handlebars";
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { env } from "../config/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 /**
  * Load and compile MJML template with data
  * @param {string} templateName - Name of the MJML template file (without extension)
@@ -16,29 +16,33 @@ const __dirname = path.dirname(__filename);
  */
 const compileTemplate = async (templateName, data) => {
   try {
-    const templatePath = path.join(__dirname, "mailTemplate", `${templateName}.mjml`);
+    const templatePath = path.join(
+      __dirname,
+      "mailTemplate",
+      `${templateName}.mjml`,
+    );
     const mjmlContent = await fs.readFile(templatePath, "utf-8");
-    
+
     // Add logo URL to data
-    const baseUrl = process.env.PUBLIC_URL || process.env.CLIENT_URL || 'http://localhost:5000';
+    const baseUrl = env.DASHBOARD_URL;
     const dataWithLogo = {
       ...data,
       logoUrl: `${baseUrl}/logo.png`, // Assuming static files served from /public
     };
-    
+
     // Compile with Handlebars first to inject dynamic data
     const template = Handlebars.compile(mjmlContent);
     const mjmlWithData = template(dataWithLogo);
-    
+
     // Convert MJML to HTML
     const { html, errors } = mjml2html(mjmlWithData, {
       validationLevel: "soft",
     });
-    
+
     if (errors && errors.length > 0) {
       console.warn("MJML compilation warnings:", errors);
     }
-    
+
     return html;
   } catch (error) {
     console.error(`Error compiling template ${templateName}:`, error);
@@ -59,13 +63,13 @@ export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
   const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASS,
+      user: env.MAIL_USER,
+      pass: env.MAIL_PASS,
     },
   });
 
   const info = await transporter.sendMail({
-    from: `"${from}" <${process.env.MAIL_USER}>`,
+    from: `"${from}" <${env.MAIL_USER}>`,
     to,
     subject,
     html,
@@ -125,11 +129,11 @@ export const sendRegistrationConfirmation = async ({ to, userData }) => {
 };
 
 export const TYPE_MAIL = {
-  ORDER_CONFIRMATION : "orderConfirmation",
-  PASSWORD_RESET : "passwordReset",
-  FORGOT_PASSWORD : "forgotPassword",
-  REGISTRATION_CONFIRMATION : "registrationConfirmation",
-}
+  ORDER_CONFIRMATION: "orderConfirmation",
+  PASSWORD_RESET: "passwordReset",
+  FORGOT_PASSWORD: "forgotPassword",
+  REGISTRATION_CONFIRMATION: "registrationConfirmation",
+};
 
 export const handleSendMail = async (type, payload) => {
   try {
