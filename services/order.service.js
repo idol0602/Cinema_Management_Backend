@@ -19,7 +19,6 @@ export const create = (order) => {
   };
   return repo.create(movieWithId);
 };
-
 export const findAll = () => repo.findAll();
 export const findById = (id) => repo.findById(id);
 export const update = (id, data) => repo.update(id, data);
@@ -200,4 +199,11 @@ export const handleOrderAndRelatedData = async (payload) => {
     return { data: null, error: error.message || error };
   }
 };
+
+export const getOrderHistory = async (userId, query) => {
+  query.filter = {
+    user_id: userId,
+  }
+  return await repo.findAndPaginate(query);
+}
 

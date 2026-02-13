@@ -13,9 +13,15 @@ import { RATE_LIMIT_ACTION } from "../utils/rateLimitAction.js";
 
 const router = Router();
 
-router.get("/", auth, controller.findAndPaginate);
-router.get("/all", auth, controller.getAll);
-router.get("/:id", auth, controller.getById);
+router.get("/", 
+  //auth,
+   controller.findAndPaginate);
+router.get("/all", 
+  // auth, 
+  controller.getAll);
+router.get("/:id",
+  //  auth,
+    controller.getById);
 router.post(
   "/",
   auth,

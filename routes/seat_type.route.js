@@ -16,20 +16,20 @@ const router = Router();
 
 router.get(
   "/",
-  auth,
-  authorize(rootPath, METHODS.GET),
+  // auth,
+  // authorize(rootPath, METHODS.GET),
   controller.findAndPaginate,
 );
 router.get(
   "/all",
-  auth,
-  authorize(rootPath + "/all", METHODS.GET),
+  // auth,
+  // authorize(rootPath + "/all", METHODS.GET),
   controller.getAll,
 );
 router.get(
   "/:id",
-  auth,
-  authorize(rootPath + "/:id", METHODS.GET),
+  // auth,
+  // authorize(rootPath + "/:id", METHODS.GET),
   controller.getById,
 );
 

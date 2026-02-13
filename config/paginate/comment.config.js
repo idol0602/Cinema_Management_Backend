@@ -8,4 +8,7 @@ export const commentPaginateConfig = {
   defaultSortBy: [["created_at", "DESC"]],
   defaultLimit: 10,
   maxLimit: 100,
+  joinTableFields: {
+    users: ["id", "name"],
+  },
 };

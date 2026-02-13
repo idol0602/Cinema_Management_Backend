@@ -19,21 +19,23 @@ import { RATE_LIMIT_ACTION } from "../utils/rateLimitAction.js";
 const rootPath = "/show-time-seats";
 const router = Router();
 
-router.get("/", authorize(rootPath, METHODS.GET), controller.findAndPaginate);
+router.get("/", 
+  // authorize(rootPath, METHODS.GET), 
+  controller.findAndPaginate);
 router.get(
   "/all",
-  authorize(rootPath + "/all", METHODS.GET),
+  // authorize(rootPath + "/all", METHODS.GET),
   controller.getAll,
 );
 router.get(
   "/:id",
-  authorize(rootPath + "/:id", METHODS.GET),
+  // authorize(rootPath + "/:id", METHODS.GET),
   controller.getById,
 );
 router.get(
   "/status/:id",
-  authorize(rootPath + "/status/:id", METHODS.GET),
-  auth,
+  // authorize(rootPath + "/status/:id", METHODS.GET),
+  // auth,
   controller.getStatusSeat,
 );
 

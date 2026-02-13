@@ -96,3 +96,16 @@ export const handleOrderAndRelatedData = async (req, res, next) => {
     next(e);
   }
 };
+
+export const getOrderHistory = async (req, res, next) => {
+  try {
+    const id = req.user.id
+    const { data, error } = await service.getOrderHistory(id, req.query);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Get order history successfully");
+  } catch (e) {
+    next(e);
+  }
+};

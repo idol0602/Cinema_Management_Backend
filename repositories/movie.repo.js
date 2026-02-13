@@ -19,7 +19,8 @@ export const findById = async (id) => {
     .from("movies")
     .select("*")
     .eq("id", id)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .single();
 };
 
 export const findByName = async (name) => {

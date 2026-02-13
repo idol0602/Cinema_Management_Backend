@@ -41,5 +41,8 @@ export const findAndPaginate = async (query) => {
     query: query,
     config: commentPaginateConfig,
     baseFilters: {},
+    joinTables: {
+      users: "user_id",
+    },
   });
 };
