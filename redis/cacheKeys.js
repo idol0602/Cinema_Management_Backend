@@ -14,15 +14,18 @@ export const CACHE_PREFIX = {
 
 // TTL in seconds
 export const TTL = {
-  HOT: 60,       // 1 min - show_times, ticket_prices
-  WARM: 300,     // 5 min - movies, combos, events, discounts, menu_items
-  COLD: 900,     // 15 min - master data (movie_types)
+  // HOT: 60, // 1 min - show_times, ticket_prices
+  // WARM: 300, // 5 min - movies, combos, events, discounts, menu_items
+  // COLD: 900, // 15 min - master data (movie_types)
+  HOT: 1, // 1 min - show_times, ticket_prices
+  WARM: 1, // 5 min - movies, combos, events, discounts, menu_items
+  COLD: 1, // 15 min - master data (movie_types)
 };
 
 /**
  * Build cache key from prefix and query object
  * Normalizes query by sorting keys to ensure same query = same hash
- * 
+ *
  * Example:
  *   buildCacheKey("cache:movies", { page: 1, search: "a" })
  *   => "cache:movies:p:a1b2c3d4e5f6"

@@ -45,8 +45,8 @@ export const moviePaginateConfigWithStatus = {
   maxLimit: 50,
 
   // ⭐ JOIN TABLE CONFIG
+  // View đã có sẵn first_show_time, last_show_time → không cần join show_times
   joinTableFields: {
     movie_movie_types: ["id", "movie_type_id"],
-    show_times: ["id", "start_time", "end_time"],
   },
 };

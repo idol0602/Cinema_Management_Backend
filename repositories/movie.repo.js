@@ -1,5 +1,8 @@
 import { supabase } from "../config/supabase.js";
-import { moviePaginateConfig, moviePaginateConfigWithStatus } from "../config/paginate/movie.config.js";
+import {
+  moviePaginateConfig,
+  moviePaginateConfigWithStatus,
+} from "../config/paginate/movie.config.js";
 import { paginate } from "../utils/paginate.js";
 
 export const create = async (movie) => {
@@ -57,7 +60,7 @@ export const findAndPaginate = async (query) => {
   });
 };
 
-export const findAndPaginateWithStatus = async ({query,view}) => {
+export const findAndPaginateWithStatus = async ({ query, view }) => {
   return await paginate({
     supabase,
     table: view, // ⭐ dùng VIEW
@@ -97,8 +100,8 @@ export const bulkCreate = async (movies) => {
           p_thumbnail: movie.thumbnail ?? null,
           p_is_active: movie.is_active ?? true,
           p_movie_type_ids: movie.movie_type_ids,
-        })
-      )
+        }),
+      ),
     );
 
     results.push(...batchResults);
@@ -112,8 +115,6 @@ export const bulkCreate = async (movies) => {
 
   return { data: results, error: null };
 };
-
-
 
 export const createWithTypes = async (payload) => {
   return await supabase.rpc("create_movie_with_types", payload);
