@@ -11,10 +11,42 @@ export const moviePaginateConfig = {
   searchableColumns: ["title", "description", "director"],
   // dùng combobox chọn tiêu chí lọc
   filterableColumns: {
-    movie_type_id: true,
     is_active: true,
+    "movie_movie_types.movie_type_id": true,
   },
   defaultSortBy: [["created_at", "DESC"]],
   defaultLimit: 10,
   maxLimit: 50,
+  joinTableFields: {
+    movie_movie_types: ["id", "movie_type_id"],
+  },
+};
+
+export const moviePaginateConfigWithStatus = {
+  // SORT
+  sortableColumns: [
+    "title",
+    "release_date",
+    "rating",
+    "duration",
+    "created_at",
+  ],
+
+  // SEARCH
+  searchableColumns: ["title", "description", "director"],
+
+  // FILTER (CHỈ column thuộc movies)
+  filterableColumns: {
+    is_active: true,
+  },
+
+  defaultSortBy: [["created_at", "DESC"]],
+  defaultLimit: 10,
+  maxLimit: 50,
+
+  // ⭐ JOIN TABLE CONFIG
+  joinTableFields: {
+    movie_movie_types: ["id", "movie_type_id"],
+    show_times: ["id", "start_time", "end_time"],
+  },
 };

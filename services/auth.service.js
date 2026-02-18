@@ -8,6 +8,7 @@ import { TYPE_MAIL } from "../utils/mail.js";
 import * as roleService from "../services/role.service.js";
 import * as tokenService from "./token.service.js";
 import { toVietnamTime } from "../utils/formatTime.js";
+import { redis } from "../config/redis.js";
 
 // Deprecated: Use tokenService.generateTokenWithVersion instead
 const generateToken = async (user) => {
@@ -127,7 +128,7 @@ export const login = async ({ email, password }) => {
   };
 };
 
-export const forgotPassword = async (email) => {
+export const forgotPassword = async (email,domain) => {
   const { data: user, error } = await userRepo.findByEmail(email);
   if (!user || error) {
     return {
@@ -143,7 +144,7 @@ export const forgotPassword = async (email) => {
   );
 
   const resetLink = `${
-    env.DASHBOARD_URL || process.env.DASHBOARD_URL
+    domain || process.env.DASHBOARD_URL
   }/reset-password/${token}`;
 
   const payload = {
@@ -181,12 +182,14 @@ export const updateProfile = async ({ userId, payload }) => {
   const hashedPassword = await bcrypt.hash(payload.password, 10);
   const { password, ...updateData } = payload;
 
+  console.log("password", password);
+
   // Check if password is being changed
-  const isPasswordChanged = password !== "hidden password";
+  const isPasswordChanged = password !== "";
 
   // Nếu password là "hidden password" thì không update password, chỉ update những field khác
   const dataToUpdate =
-    password === "hidden password"
+    password === ""
       ? updateData
       : {
           ...payload,
@@ -227,4 +230,119 @@ export const logout = async (userId, token) => {
   await tokenService.revokeToken(token);
   await tokenService.clearActiveSession(userId);
   return { success: true, message: "Logout successfully" };
+};
+
+// ============ OTP Registration ============
+
+const generateOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+export const sendRegistrationOtp = async (payload) => {
+  const { name, email, phone, password } = payload;
+
+  // Check if email already exists
+  const { data: exists, error: findError } = await userRepo.findByEmail(email);
+  if (findError && findError.code !== "PGRST116") {
+    return { data: null, error: findError };
+  }
+  if (exists) {
+    const error = new Error("Email already register");
+    error.statusCode = 400;
+    return { data: null, error };
+  }
+
+  const otp = generateOtp();
+  const redisKey = `otp:${email}`;
+
+  // Store OTP + payload in Redis with 10-minute TTL
+  await redis.set(
+    redisKey,
+    JSON.stringify({ otp, payload: { name, email, phone, password } }),
+    { EX: 600 }
+  );
+
+  // Send OTP email via RabbitMQ
+  Producer.mail({
+    type: TYPE_MAIL.OTP_VERIFICATION,
+    payload: {
+      to: email,
+      otpData: {
+        userName: name || "Người dùng",
+        userEmail: email,
+        otpCode: otp,
+        expirationTime: "10 phút",
+      },
+    },
+  });
+
+  return {
+    data: { message: "OTP đã được gửi tới email của bạn" },
+    error: null,
+  };
+};
+
+export const verifyRegistrationOtp = async ({ email, otp }) => {
+  const redisKey = `otp:${email}`;
+  const stored = await redis.get(redisKey);
+
+  if (!stored) {
+    const error = new Error("OTP đã hết hạn hoặc không tồn tại");
+    error.statusCode = 400;
+    return { data: null, error };
+  }
+
+  const { otp: storedOtp, payload } = JSON.parse(stored);
+
+  if (storedOtp !== otp) {
+    const error = new Error("Mã OTP không đúng");
+    error.statusCode = 400;
+    return { data: null, error };
+  }
+
+  // OTP valid — delete from Redis and register user
+  await redis.del(redisKey);
+
+  // Use existing register logic
+  return await register(payload);
+};
+
+export const resendRegistrationOtp = async (email) => {
+  const redisKey = `otp:${email}`;
+  const stored = await redis.get(redisKey);
+
+  if (!stored) {
+    const error = new Error("Phiên đăng ký đã hết hạn. Vui lòng đăng ký lại.");
+    error.statusCode = 400;
+    return { data: null, error };
+  }
+
+  const { payload } = JSON.parse(stored);
+  const newOtp = generateOtp();
+
+  // Update Redis with new OTP, reset TTL
+  await redis.set(
+    redisKey,
+    JSON.stringify({ otp: newOtp, payload }),
+    { EX: 600 }
+  );
+
+  // Send new OTP email
+  Producer.mail({
+    type: TYPE_MAIL.OTP_VERIFICATION,
+    payload: {
+      to: email,
+      otpData: {
+        userName: payload.name || "Người dùng",
+        userEmail: email,
+        otpCode: newOtp,
+        expirationTime: "10 phút",
+      },
+    },
+  });
+
+  return {
+    data: { message: "Mã OTP mới đã được gửi" },
+    error: null,
+  };
 };

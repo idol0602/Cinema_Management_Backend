@@ -6,8 +6,6 @@ export const auth = async (req, res, next) => {
   // Try to get token from cookie first, then fallback to Authorization header
   let token = req.cookies?.access_token;
 
-  console.log(token)
-
   if (!token) {
     const header =
       req.headers["authorization"] || req.headers["Authorization"] || "";

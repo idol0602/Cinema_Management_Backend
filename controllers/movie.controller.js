@@ -186,3 +186,39 @@ export const importFromExcel = async (req, res, next) => {
     next(e);
   }
 };
+
+export const findNowShowing = async (req, res, next) => {
+  try {
+    const result = await service.findNowShowing(req.query);
+    if (result.error) {
+      return fail(res, result.error);
+    }
+    return res.json({
+      success: true,
+      data: result.data,
+      meta: result.meta,
+      links: result.links,
+      message: "Get movies successfully",
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const findComingSoon = async (req, res, next) => {
+  try {
+    const result = await service.findComingSoon(req.query);
+    if (result.error) {
+      return fail(res, result.error);
+    }
+    return res.json({
+      success: true,
+      data: result.data,
+      meta: result.meta,
+      links: result.links,
+      message: "Get movies successfully",
+    });
+  } catch (e) {
+    next(e);
+  }
+};

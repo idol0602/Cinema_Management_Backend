@@ -1,0 +1,73 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-all font-family="'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" />
+      <mj-text font-size="14px" color="#333333" line-height="1.6" />
+    </mj-attributes>
+    <mj-style>
+      .otp-code {
+        font-size: 36px;
+        font-weight: 700;
+        letter-spacing: 12px;
+        color: #f97316;
+        text-align: center;
+        padding: 20px 0;
+      }
+    </mj-style>
+  </mj-head>
+
+  <mj-body background-color="#f4f4f5">
+    <!-- Header -->
+    <mj-section background-color="#18181b" padding="30px 0">
+      <mj-column>
+        <mj-text align="center" font-size="28px" color="#f97316" font-weight="700">
+          META CINEMA
+        </mj-text>
+        <mj-text align="center" font-size="14px" color="#a1a1aa">
+          Xác Thực Tài Khoản
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Body -->
+    <mj-section background-color="#ffffff" padding="40px 30px" border-radius="8px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#18181b" padding-bottom="10px">
+          Xin chào {{userName}},
+        </mj-text>
+
+        <mj-text color="#52525b" padding-bottom="20px">
+          Cảm ơn bạn đã đăng ký tài khoản tại META CINEMA. Vui lòng sử dụng mã OTP dưới đây để hoàn tất đăng ký:
+        </mj-text>
+
+        <!-- OTP Code Box -->
+        <mj-section background-color="#fef3c7" border-radius="8px" padding="10px 0">
+          <mj-column>
+            <mj-text css-class="otp-code" align="center" font-size="36px" font-weight="700" color="#f97316" letter-spacing="12px">
+              {{otpCode}}
+            </mj-text>
+          </mj-column>
+        </mj-section>
+
+        <mj-text color="#71717a" padding-top="20px" font-size="13px">
+          ⏱ Mã OTP có hiệu lực trong <b>{{expirationTime}}</b>. Vui lòng không chia sẻ mã này với bất kỳ ai.
+        </mj-text>
+
+        <mj-divider border-color="#e4e4e7" border-width="1px" padding="20px 0" />
+
+        <mj-text color="#a1a1aa" font-size="12px">
+          Nếu bạn không yêu cầu đăng ký tài khoản, vui lòng bỏ qua email này.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Footer -->
+    <mj-section padding="20px 0">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#a1a1aa">
+          © 2024 META CINEMA. All rights reserved.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

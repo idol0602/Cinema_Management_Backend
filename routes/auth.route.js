@@ -13,12 +13,14 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
-router.post(
-  "/register",
-  validate(registerSchema),
-  rateLimitByIP(RATE_LIMIT_ACTION.REGISTER),
-  controller.register,
-);
+// defend from bypass email
+// router.post(
+//   "/register",
+//   validate(registerSchema),
+//   rateLimitByIP(RATE_LIMIT_ACTION.REGISTER),
+//   controller.register,
+// );
+
 router.post(
   "/login",
   validate(loginSchema),
@@ -36,6 +38,22 @@ router.post(
   validate(resetPasswordSchema),
   rateLimitByIP(RATE_LIMIT_ACTION.RESET_PASSWORD),
   controller.resetPassword,
+);
+router.post(
+  "/send-otp",
+  validate(registerSchema),
+  rateLimitByIP(RATE_LIMIT_ACTION.REGISTER),
+  controller.sendOtp,
+);
+router.post(
+  "/verify-otp",
+  rateLimitByIP(RATE_LIMIT_ACTION.REGISTER),
+  controller.verifyOtp,
+);
+router.post(
+  "/resend-otp",
+  rateLimitByIP(RATE_LIMIT_ACTION.REGISTER),
+  controller.resendOtp,
 );
 router.put(
   "/update-profile/:id",

@@ -128,11 +128,25 @@ export const sendRegistrationConfirmation = async ({ to, userData }) => {
   });
 };
 
+/**
+ * Send OTP verification email
+ */
+export const sendOtpEmail = async ({ to, otpData }) => {
+  const html = await compileTemplate("otpVerification", otpData);
+  return sendMail({
+    to,
+    subject: `Mã OTP Xác Thực - META CINEMA`,
+    html,
+    from: "META CINEMA - BẢO MẬT",
+  });
+};
+
 export const TYPE_MAIL = {
   ORDER_CONFIRMATION: "orderConfirmation",
   PASSWORD_RESET: "passwordReset",
   FORGOT_PASSWORD: "forgotPassword",
   REGISTRATION_CONFIRMATION: "registrationConfirmation",
+  OTP_VERIFICATION: "otpVerification",
 };
 
 export const handleSendMail = async (type, payload) => {
@@ -149,6 +163,9 @@ export const handleSendMail = async (type, payload) => {
         break;
       case TYPE_MAIL.REGISTRATION_CONFIRMATION:
         await sendRegistrationConfirmation(payload);
+        break;
+      case TYPE_MAIL.OTP_VERIFICATION:
+        await sendOtpEmail(payload);
         break;
       default:
         break;

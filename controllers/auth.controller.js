@@ -1,4 +1,5 @@
 import * as authService from "../services/auth.service.js";
+import * as userService from "../services/user.service.js";
 import * as tokenService from "../services/token.service.js";
 import { success, fail } from "../utils/response.js";
 
@@ -38,9 +39,9 @@ export const login = async (req, res, next) => {
 
 export const forgotPassword = async (req, res, next) => {
   try {
-    const { email } = req.body;
+    const { email,domain } = req.body;
     const { success: isSuccess, message } =
-      await authService.forgotPassword(email);
+      await authService.forgotPassword(email,domain);
     if (!isSuccess) {
       return fail(res, { message: message });
     }
@@ -107,6 +108,9 @@ export const logout = async (req, res, next) => {
       });
     }
 
+    // Send offline signal
+    await userService.offline(userId);
+
     // Revoke current token
     await tokenService.revokeToken(token);
 
@@ -122,5 +126,48 @@ export const logout = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const sendOtp = async (req, res, next) => {
+  try {
+    const { data, error } = await authService.sendRegistrationOtp(req.body);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "OTP sent successfully");
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const verifyOtp = async (req, res, next) => {
+  try {
+    const { email, otp } = req.body;
+    const { data, error } = await authService.verifyRegistrationOtp({ email, otp });
+    if (error) {
+      return fail(res, error);
+    }
+
+    // Set token in HTTP-only cookie
+    tokenService.setTokenCookie(res, data.token);
+
+    // Return user data without token
+    return success(res, { user: data.user }, "Registration successful", 201);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const resendOtp = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const { data, error } = await authService.resendRegistrationOtp(email);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "OTP resent successfully");
+  } catch (e) {
+    next(e);
   }
 };
