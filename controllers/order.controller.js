@@ -86,7 +86,6 @@ export const getOrderDetails = async (req, res, next) => {
 export const handleOrderAndRelatedData = async (req, res, next) => {
   try {
     const payload = req.body;
-    payload.order.payment_status = PAYMENT_STATUS.COMPLETED;
     const { data, error } = await service.handleOrderAndRelatedData(payload);
     if (error) {
       return fail(res, error);

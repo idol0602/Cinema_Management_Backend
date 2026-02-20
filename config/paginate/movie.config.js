@@ -38,6 +38,7 @@ export const moviePaginateConfigWithStatus = {
   // FILTER (CHỈ column thuộc movies)
   filterableColumns: {
     is_active: true,
+    "movie_movie_types.movie_type_id": true,
   },
 
   defaultSortBy: [["created_at", "DESC"]],
@@ -47,6 +48,6 @@ export const moviePaginateConfigWithStatus = {
   // ⭐ JOIN TABLE CONFIG
   // View đã có sẵn first_show_time, last_show_time → không cần join show_times
   joinTableFields: {
-    movie_movie_types: ["id", "movie_type_id"],
+    movie_movie_types: ["id", "movie_type_id", "movie_types(type)"],
   },
 };

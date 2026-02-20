@@ -3,6 +3,7 @@ import { createTicketSchema } from "./ticket.schema.js";
 import { createComboItemInTicketSchema } from "./combo_item_in_tickets.schema.js";
 import { createMenuItemInTicketSchema } from "./menu_item_in_tickets.schema.js";
 import { createShowTimeSchema } from "./show_times.schema.js";
+import { PAYMENT_METHODS } from "../utils/paymentMethods.js";
 
 export const createOrderSchema = z.object({
   discount_id: z.string().nullable().optional(),
@@ -14,7 +15,7 @@ export const createOrderSchema = z.object({
     .enum(["PENDING", "COMPLETED", "FAILED", "CANCELED", "REFUND_PENDING", "REFUNDED"])
     .default("PENDING")
     .optional(),
-  payment_method: z.string().optional(),
+  payment_method: z.string().optional().default(PAYMENT_METHODS.CASH),
   total_price: z.number(),
   created_at: z.string().default(new Date().toISOString()).optional(),
   requested_at: z.string().default(new Date().toISOString()).optional(),

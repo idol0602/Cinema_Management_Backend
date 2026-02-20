@@ -8,6 +8,9 @@ import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
 import { generateQrBuffer } from "../utils/qr.js";
 import { generateQrToken } from "../utils/qrToken.js";
 import { SEAT_STATUS } from "../utils/seatStatus.js";
+import { PAYMENT_METHODS } from "../utils/paymentMethods.js";
+import { Producer } from "../rabbitmq/producer.js";
+import { TYPE_MAIL } from "../utils/mail.js";
 import { uploadBuffer } from "./cloudinary.service.js";
 import { validateBookingTime, processOrderInventory, validateStock } from "./inventory.service.js";
 
@@ -16,6 +19,7 @@ export const create = (order) => {
     ...order,
     id: uuidv4(),
     payment_status: PAYMENT_STATUS.PENDING,
+    payment_method: order.payment_method,
   };
   return repo.create(movieWithId);
 };
@@ -34,6 +38,8 @@ export const handleOrderAndRelatedData = async (payload) => {
     showTime
   } = payload;
 
+  order.payment_method = payload.order.payment_method || PAYMENT_METHODS.CASH;
+  order.payment_status = PAYMENT_STATUS.COMPLETED;
   try {
     // 0. Validate booking time (5 minutes before showtime cutoff)
     if (showTime?.start_time) {
