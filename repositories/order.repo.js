@@ -40,3 +40,7 @@ export const findAndPaginate = async (query) => {
 export const getOrderDetails = async (orderId) => {
   return await supabase.rpc("get_order_details", { p_order_id: orderId });
 };
+
+export const handleOrderRpc = async (payload) => {
+  return await supabase.rpc("handle_order_and_related_data", { p_payload: payload });
+};

@@ -8,18 +8,9 @@
       <mj-section background-color="#ffffff" padding="20px" />
     </mj-attributes>
     <mj-style inline="inline">
-      .ticket-card {
-        background: linear-gradient(135deg, #B8860B 0%, #CD853F 100%);
-        border-radius: 12px;
-        padding: 20px;
-        margin: 10px 0;
-      }
-      .qr-container {
-        background: white;
-        padding: 15px;
-        border-radius: 8px;
-        text-align: center;
-      }
+      .info-label { color: #666666; }
+      .info-value { font-weight: 600; color: #1a1a2e; }
+      .gold-text { color: #B8860B; font-weight: 700; }
     </mj-style>
   </mj-head>
   <mj-body background-color="#f4f4f4">
@@ -37,7 +28,7 @@
     <mj-section background-color="#ffffff" padding="40px 20px 20px">
       <mj-column>
         <mj-text align="center" font-size="24px" font-weight="700" color="#1a1a2e">
-          Cảm ơn bạn đã đặt vé!
+          🎬 Cảm ơn bạn đã đặt vé!
         </mj-text>
         <mj-text align="center" color="#666666" padding-top="10px">
           Đơn hàng của bạn đã được xác nhận thành công
@@ -45,17 +36,17 @@
       </mj-column>
     </mj-section>
 
-    <!-- Order Info -->
-    <mj-section background-color="#ffffff" padding="20px">
+    <!-- ======== ORDER INFO ======== -->
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
       <mj-column>
         <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
-          Thông Tin Đơn Hàng
+          📋 Thông Tin Đơn Hàng
         </mj-text>
         <mj-divider border-color="#e0e0e0" border-width="1px" />
       </mj-column>
     </mj-section>
 
-    <mj-section background-color="#ffffff" padding="10px 20px">
+    <mj-section background-color="#ffffff" padding="5px 20px">
       <mj-column width="50%">
         <mj-text color="#666666">Mã đơn hàng:</mj-text>
       </mj-column>
@@ -64,91 +55,218 @@
       </mj-column>
     </mj-section>
 
-    <mj-section background-color="#ffffff" padding="10px 20px">
+    <mj-section background-color="#ffffff" padding="5px 20px">
       <mj-column width="50%">
         <mj-text color="#666666">Ngày đặt:</mj-text>
       </mj-column>
       <mj-column width="50%">
         <mj-text font-weight="600" color="#1a1a2e" align="right">{{orderDate}}</mj-text>
-      </mj:column>
-    </mj-section>
-
-    <mj-section background-color="#ffffff" padding="10px 20px">
-      <mj-column width="50%">
-        <mj-text color="#666666">Tổng tiền:</mj-text>
-      </mj-column>
-      <mj-column width="50%">
-        <mj-text font-weight="700" color="#CD853F" align="right" font-size="18px">{{totalAmount}} VNĐ</mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Movie Info -->
-    <mj-section background-color="#ffffff" padding="30px 20px 20px">
+    <mj-section background-color="#ffffff" padding="5px 20px">
+      <mj-column width="50%">
+        <mj-text color="#666666">Phương thức thanh toán:</mj-text>
+      </mj-column>
+      <mj-column width="50%">
+        <mj-text font-weight="600" color="#1a1a2e" align="right">{{paymentMethod}}</mj-text>
+      </mj-column>
+    </mj-section>
+
+    {{#if serviceVat}}
+    <mj-section background-color="#ffffff" padding="5px 20px">
+      <mj-column width="50%">
+        <mj-text color="#666666">VAT dịch vụ:</mj-text>
+      </mj-column>
+      <mj-column width="50%">
+        <mj-text font-weight="600" color="#1a1a2e" align="right">{{serviceVat}} VNĐ</mj-text>
+      </mj-column>
+    </mj-section>
+    {{/if}}
+
+    <mj-section background-color="#ffffff" padding="5px 20px 20px">
+      <mj-column width="50%">
+        <mj-text color="#666666" font-size="16px" font-weight="600">Tổng tiền:</mj-text>
+      </mj-column>
+      <mj-column width="50%">
+        <mj-text font-weight="700" color="#CD853F" align="right" font-size="20px">{{totalAmount}} VNĐ</mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- ======== MOVIE INFO ======== -->
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
       <mj-column>
         <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
-          Thông Tin Phim
+          🎥 Thông Tin Phim
         </mj-text>
         <mj-divider border-color="#e0e0e0" border-width="1px" />
       </mj-column>
     </mj-section>
 
-    <mj-section background-color="#ffffff" padding="10px 20px">
+    <mj-section background-color="#ffffff" padding="5px 20px">
       <mj-column>
-        <mj-text color="#666666">Tên phim: <span style="font-weight: 600; color: #1a1a2e;">{{movieTitle}}</span></mj-text>
-        <mj-text color="#666666">Suất chiếu: <span style="font-weight: 600; color: #1a1a2e;">{{showTime}}</span></mj-text>
+        {{#if movieImage}}
+        <mj-image src="{{movieImage}}" alt="{{movieTitle}}" width="300px" border-radius="8px" padding-bottom="10px" />
+        {{/if}}
+        <mj-text color="#666666">Tên phim: <span style="font-weight: 700; color: #1a1a2e; font-size: 16px;">{{movieTitle}}</span></mj-text>
+        <mj-text color="#666666">Thời lượng: <span style="font-weight: 600; color: #1a1a2e;">{{movieDuration}}</span></mj-text>
+        {{#if movieGenres}}
+        <mj-text color="#666666">Thể loại: <span style="font-weight: 600; color: #1a1a2e;">{{movieGenres}}</span></mj-text>
+        {{/if}}
+      </mj-column>
+    </mj-section>
+
+    <!-- ======== SHOWTIME & ROOM ======== -->
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
+      <mj-column>
+        <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
+          🕐 Suất Chiếu & Phòng
+        </mj-text>
+        <mj-divider border-color="#e0e0e0" border-width="1px" />
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#f8f8ff" padding="15px 20px" border-radius="8px">
+      <mj-column>
+        <mj-text color="#666666">Suất chiếu: <span style="font-weight: 600; color: #B8860B;">{{showTime}}</span></mj-text>
+        <mj-text color="#666666">Kết thúc: <span style="font-weight: 600; color: #1a1a2e;">{{endTime}}</span></mj-text>
         <mj-text color="#666666">Phòng chiếu: <span style="font-weight: 600; color: #1a1a2e;">{{roomName}}</span></mj-text>
+        {{#if roomFormat}}
+        <mj-text color="#666666">Định dạng: <span style="font-weight: 600; color: #1a1a2e;">{{roomFormat}}</span></mj-text>
+        {{/if}}
       </mj-column>
     </mj-section>
 
-    <!-- Tickets Section -->
-    <mj-section background-color="#ffffff" padding="30px 20px 20px">
+    <!-- ======== DISCOUNT ======== -->
+    {{#if hasDiscount}}
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
       <mj-column>
         <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
-          Danh Sách Vé Của Bạn
+          🏷️ Giảm Giá
         </mj-text>
         <mj-divider border-color="#e0e0e0" border-width="1px" />
       </mj-column>
     </mj-section>
 
-    <!-- Ticket Cards (will be repeated for each ticket) -->
-    <mj-section background-color="#ffffff" padding="10px 20px">
+    <mj-section background-color="#f0fff4" padding="15px 20px" border-radius="8px">
       <mj-column>
-        <mj-text>
-          {{#tickets}}
+        <mj-text color="#22863a" font-weight="600">{{discountName}}</mj-text>
+        <mj-text color="#22863a">Giảm: <span style="font-weight: 700; font-size: 16px;">{{discountPercent}}%</span></mj-text>
+      </mj-column>
+    </mj-section>
+    {{/if}}
+
+    <!-- ======== EVENT ======== -->
+    {{#if hasEvent}}
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
+      <mj-column>
+        <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
+          🎉 Sự Kiện
         </mj-text>
+        <mj-divider border-color="#e0e0e0" border-width="1px" />
       </mj-column>
     </mj-section>
 
+    <mj-section background-color="#fff8f0" padding="15px 20px" border-radius="8px">
+      <mj-column>
+        <mj-text color="#d97706" font-weight="600">{{eventName}}</mj-text>
+        {{#if eventDescription}}
+        <mj-text color="#92400e" font-size="13px">{{eventDescription}}</mj-text>
+        {{/if}}
+      </mj-column>
+    </mj-section>
+    {{/if}}
+
+    <!-- ======== COMBOS ======== -->
+    {{#if hasCombos}}
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
+      <mj-column>
+        <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
+          🍿 Combo
+        </mj-text>
+        <mj-divider border-color="#e0e0e0" border-width="1px" />
+      </mj-column>
+    </mj-section>
+
+    {{#each combos}}
+    <mj-section background-color="#faf5ff" padding="15px 20px" border-radius="8px">
+      <mj-column>
+        <mj-text font-weight="700" color="#1a1a2e">{{comboName}}</mj-text>
+        {{#if comboDescription}}
+        <mj-text color="#666666" font-size="12px">{{comboDescription}}</mj-text>
+        {{/if}}
+        {{#each comboItems}}
+        <mj-text color="#666666" font-size="13px" padding-top="2px">
+          • {{itemName}} x{{itemQuantity}} — {{itemPrice}} VNĐ
+        </mj-text>
+        {{/each}}
+        <mj-text color="#B8860B" font-weight="700" padding-top="5px">
+          Giá combo: {{comboPrice}} VNĐ
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    {{/each}}
+    {{/if}}
+
+    <!-- ======== MENU ITEMS ======== -->
+    {{#if hasMenuItems}}
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
+      <mj-column>
+        <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
+          🥤 Món Lẻ
+        </mj-text>
+        <mj-divider border-color="#e0e0e0" border-width="1px" />
+      </mj-column>
+    </mj-section>
+
+    {{#each menuItems}}
+    <mj-section background-color="#f8f8ff" padding="10px 20px" border-radius="8px">
+      <mj-column width="60%">
+        <mj-text font-weight="600" color="#1a1a2e">{{itemName}}</mj-text>
+        <mj-text color="#666666" font-size="13px">SL: {{itemQuantity}} × {{itemUnitPrice}} VNĐ</mj-text>
+      </mj-column>
+      <mj-column width="40%">
+        <mj-text align="right" font-weight="700" color="#B8860B">{{itemTotalPrice}} VNĐ</mj-text>
+      </mj-column>
+    </mj-section>
+    {{/each}}
+    {{/if}}
+
+    <!-- ======== TICKETS (Vertical Layout with QR) ======== -->
+    <mj-section background-color="#ffffff" padding="20px 20px 10px">
+      <mj-column>
+        <mj-text font-weight="700" font-size="16px" color="#1a1a2e">
+          🎟️ Danh Sách Vé ({{ticketCount}} vé)
+        </mj-text>
+        <mj-divider border-color="#e0e0e0" border-width="1px" />
+      </mj-column>
+    </mj-section>
+
+    {{#each tickets}}
     <mj-section background-color="#f8f3ff" padding="20px" border-radius="12px">
-      <mj-column width="65%">
+      <mj-column>
         <mj-text font-weight="700" color="#1a1a2e" font-size="16px">
           Vé #{{ticketNumber}}
         </mj-text>
         <mj-text color="#666666" padding-top="5px">
-          Ghế: <span style="font-weight: 600; color: #B8860B;">{{seatName}}</span>
+          Ghế: <span style="font-weight: 700; color: #B8860B; font-size: 18px;">{{seatName}}</span>
         </mj-text>
         <mj-text color="#666666">
-          Loại ghế: {{seatType}}
+          Loại ghế: <span style="font-weight: 600; color: #1a1a2e;">{{seatType}}</span>
         </mj-text>
         <mj-text color="#666666">
           Giá: <span style="font-weight: 600;">{{price}} VNĐ</span>
         </mj-text>
-      </mj-column>
-      <mj-column width="35%">
-        <mj-image src="{{qrCodeUrl}}" alt="QR Code" width="120px" padding="10px" />
-        <mj-text align="center" font-size="11px" color="#999999">
-          Quét mã để check-in
+        <mj-divider border-color="#e0d6f0" border-width="1px" padding="10px 0" />
+        <mj-image src="{{qrCodeUrl}}" alt="QR Code Vé #{{ticketNumber}}" width="180px" padding="5px 0" align="center" />
+        <mj-text align="center" font-size="11px" color="#999999" padding-top="5px">
+          Quét mã QR để check-in tại rạp
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <mj-section background-color="#ffffff" padding="10px 20px">
-      <mj-column>
-        <mj-text>
-          {{/tickets}}
-        </mj-text>
-      </mj-column>
-    </mj-section>
+    <mj-section padding="5px"></mj-section>
+    {{/each}}
 
     <!-- Important Notes -->
     <mj-section background-color="#fff9e6" padding="20px" border-radius="8px">

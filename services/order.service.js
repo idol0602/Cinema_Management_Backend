@@ -1,18 +1,17 @@
 import * as repo from "../repositories/order.repo.js";
-import * as ticketRepo from "../repositories/ticket.repo.js";
-import * as comboItemInTicketRepo from "../repositories/combo_item_in_tickets.repo.js";
-import * as menuItemInTicketRepo from "../repositories/menu_item_in_tickets.repo.js";
 import * as showTimeSeatRepo from "../repositories/show_time_seats.repo.js";
 import { v4 as uuidv4 } from "uuid";
 import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
 import { generateQrBuffer } from "../utils/qr.js";
 import { generateQrToken } from "../utils/qrToken.js";
-import { SEAT_STATUS } from "../utils/seatStatus.js";
 import { PAYMENT_METHODS } from "../utils/paymentMethods.js";
 import { Producer } from "../rabbitmq/producer.js";
 import { TYPE_MAIL } from "../utils/mail.js";
 import { uploadBuffer } from "./cloudinary.service.js";
-import { validateBookingTime, processOrderInventory, validateStock } from "./inventory.service.js";
+import { validateBookingTime, validateStock } from "./inventory.service.js";
+import { createPayment as momoCreatePayment } from "./payment/momo.service.js";
+import { createPayment as vnpayCreatePayment } from "./payment/vnpay.service.js";
+import { toVietnamTime } from "../utils/formatTime.js";
 
 export const create = (order) => {
   const movieWithId = {
@@ -70,17 +69,7 @@ export const handleOrderAndRelatedData = async (payload) => {
     }
     console.log("📦 Stock validation passed");
 
-    // 1. Update order (without changing payment_status - left for flexibility)
-    const { data: orderData, error: orderError } = await repo.update(order.id, {
-      ...order
-    });
-
-    if (orderError) {
-      return { data: null, error: orderError };
-    }
-
     // Calculate token expiration based on showTime end_time
-    // Token should expire after the movie ends
     let tokenExpiry = "24h"; // default
     if (showTime?.end_time) {
       const endTime = new Date(showTime.end_time);
@@ -88,114 +77,123 @@ export const handleOrderAndRelatedData = async (payload) => {
       const diffMs = endTime.getTime() - now.getTime();
       
       if (diffMs > 0) {
-        // Add 30 minutes buffer after movie ends
         const expiryMs = diffMs + (30 * 60 * 1000);
         const expirySeconds = Math.ceil(expiryMs / 1000);
         tokenExpiry = `${expirySeconds}s`;
       }
     }
 
-    // 2. Create tickets with QR codes (upload to Cloudinary)
-    const ticketPromises = tickets.map(async (ticket) => {
-      const ticketId = uuidv4();
-      // Generate QR token (JWT with ticket ID, expires when movie ends + 30 min)
-      const qrToken = generateQrToken({ ticketId }, tokenExpiry);
-      
-      // Generate QR code as buffer and upload to Cloudinary
-      const qrBuffer = await generateQrBuffer(qrToken);
-      const { url: qrCodeUrl } = await uploadBuffer(qrBuffer, "cinema_tickets", `ticket_${ticketId}`);
+    // 1. Generate QR codes & upload to Cloudinary BEFORE RPC
+    // (External service calls cannot be rolled back)
+    const ticketsForRpc = await Promise.all(
+      tickets.map(async (ticket) => {
+        const ticketId = uuidv4();
+        const qrToken = generateQrToken({ ticketId }, tokenExpiry);
+        const qrBuffer = await generateQrBuffer(qrToken);
+        const { url: qrCodeUrl } = await uploadBuffer(qrBuffer, "cinema_tickets", `ticket_${ticketId}`);
 
-      // Update seat status to BOOKED
-      await showTimeSeatRepo.update(ticket.showtime_seat_id, {
-        status_seat: SEAT_STATUS.BOOKED
-      });
-      
-      // Clear Redis hold key since seat is now confirmed
-      await showTimeSeatRepo.clearHoldOnConfirm(ticket.showtime_seat_id, order.user_id);
-      
-      return ticketRepo.create({
-        ...ticket,
-        id: ticketId,
-        order_id: order.id,
-        qr_code: qrCodeUrl, // Store Cloudinary URL instead of JWT token
-        checked_in: false
-      });
-    });
-
-    const ticketResults = await Promise.all(ticketPromises);
-    const ticketsData = ticketResults.map(r => r.data);
-    const ticketErrors = ticketResults.filter(r => r.error).map(r => r.error);
-
-    if (ticketErrors.length > 0) {
-      console.error("Ticket creation errors:", ticketErrors);
-    }
-
-    // 3. Create combo items in tickets
-    let comboItemsData = [];
-    if (comboItemInTickets && comboItemInTickets.length > 0) {
-      const comboItemPromises = comboItemInTickets.map((comboItem) => {
-        return comboItemInTicketRepo.create({
-          ...comboItem,
-          id: uuidv4(),
-          order_id: order.id
-        });
-      });
-
-      const comboItemResults = await Promise.all(comboItemPromises);
-      comboItemsData = comboItemResults.map(r => r.data);
-      const comboErrors = comboItemResults.filter(r => r.error).map(r => r.error);
-
-      if (comboErrors.length > 0) {
-        console.error("Combo item creation errors:", comboErrors);
-      }
-    }
-
-    // 4. Create menu items in tickets
-    let menuItemsData = [];
-    if (menuItemInTickets && menuItemInTickets.length > 0) {
-      const menuItemPromises = menuItemInTickets.map((menuItem) => {
-        return menuItemInTicketRepo.create({
-          ...menuItem,
-          id: uuidv4(),
-          order_id: order.id
-        });
-      });
-
-      const menuItemResults = await Promise.all(menuItemPromises);
-      menuItemsData = menuItemResults.map(r => r.data);
-      const menuErrors = menuItemResults.filter(r => r.error).map(r => r.error);
-
-      if (menuErrors.length > 0) {
-        console.error("Menu item creation errors:", menuErrors);
-      }
-    }
-
-    // 5. Deduct inventory after successful payment processing
-    const inventoryResult = await processOrderInventory(
-      menuItemInTickets || [],
-      comboItemInTickets || []
+        return {
+          ...ticket,
+          id: ticketId,
+          order_id: order.id,
+          qr_code: qrCodeUrl,
+          checked_in: false
+        };
+      })
     );
-    
-    if (!inventoryResult.success) {
-      console.error("⚠️ Inventory deduction failed - insufficient stock:", inventoryResult.error);
-      return { 
-        data: null, 
-        error: {
-          message: "Không đủ số lượng trong kho cho một hoặc nhiều sản phẩm",
-          code: 'INSUFFICIENT_STOCK',
-          details: inventoryResult.results
-        }
-      };
+
+    // 2. Prepare combo items for RPC
+    const comboItemsForRpc = (comboItemInTickets || []).map((comboItem) => ({
+      ...comboItem,
+      id: uuidv4(),
+      order_id: order.id
+    }));
+
+    // 3. Prepare menu items for RPC
+    const menuItemsForRpc = (menuItemInTickets || []).map((menuItem) => ({
+      ...menuItem,
+      id: uuidv4(),
+      order_id: order.id
+    }));
+
+    // 4. Call atomic RPC - all DB operations in one transaction
+    const rpcPayload = {
+      order: {
+        id: order.id,
+        payment_status: order.payment_status,
+        payment_method: order.payment_method,
+        discount_id: order.discount_id || null,
+        service_vat: order.service_vat || null,
+        total_price: order.total_price || null,
+        trans_id: order.trans_id || null
+      },
+      tickets: ticketsForRpc,
+      combo_items: comboItemsForRpc,
+      menu_items: menuItemsForRpc
+    };
+
+    const { data: rpcResult, error: rpcError } = await repo.handleOrderRpc(rpcPayload);
+
+    if (rpcError) {
+      console.error("❌ RPC error:", rpcError);
+      return { data: null, error: rpcError };
     }
 
-    // Return structured response with all data
+    if (!rpcResult?.success) {
+      console.error("❌ RPC returned failure:", rpcResult?.error);
+      const errorMsg = rpcResult?.error || "Unknown RPC error";
+      
+      // Check if it's an insufficient stock error
+      if (typeof errorMsg === 'string' && errorMsg.includes('Insufficient stock')) {
+        return {
+          data: null,
+          error: {
+            message: "Không đủ số lượng trong kho cho một hoặc nhiều sản phẩm",
+            code: 'INSUFFICIENT_STOCK',
+            details: errorMsg
+          }
+        };
+      }
+      
+      return { data: null, error: errorMsg };
+    }
+
+    console.log("✅ RPC order transaction completed successfully");
+
+    // 5. Clear Redis hold keys (non-DB operation, safe to do after RPC)
+    for (const ticket of ticketsForRpc) {
+      await showTimeSeatRepo.clearHoldOnConfirm(ticket.showtime_seat_id, order.user_id);
+    }
+
+    // 6. Send confirmation email via RabbitMQ
+    try {
+      const { data: orderDetails, error: detailsError } = await repo.getOrderDetails(order.id);
+      
+      if (!detailsError && orderDetails) {
+        const emailData = buildEmailData(orderDetails);
+        Producer.mail({
+          type: TYPE_MAIL.ORDER_CONFIRMATION,
+          payload: {
+            to: orderDetails.user?.email,
+            orderData: emailData
+          }
+        });
+        console.log("📧 Order confirmation email queued for:", orderDetails.user?.email);
+      } else {
+        console.error("⚠️ Could not fetch order details for email:", detailsError);
+      }
+    } catch (emailError) {
+      // Email failure should not fail the order
+      console.error("⚠️ Failed to queue confirmation email:", emailError);
+    }
+
+    // Return structured response
     return {
       data: {
-        order: orderData || order,
-        tickets: ticketsData,
-        comboItemInTickets: comboItemsData,
-        menuItemInTickets: menuItemsData,
-        inventoryResult: inventoryResult.results
+        order: rpcResult.order,
+        tickets: rpcResult.tickets,
+        comboItemInTickets: rpcResult.combo_items,
+        menuItemInTickets: rpcResult.menu_items
       },
       error: null
     };
@@ -206,10 +204,95 @@ export const handleOrderAndRelatedData = async (payload) => {
   }
 };
 
+/**
+ * Build email template data from order details (from get_order_details RPC)
+ */
+const buildEmailData = (details) => {
+  const order = details.order || {};
+  const movie = details.movie || {};
+  const ticketsList = details.tickets || [];
+  const discount = details.discount || null;
+  const event = details.event || null;
+  const combosList = details.combos || [];
+  const menuItemsList = details.menu_items || [];
+
+  // Get showtime/room from first ticket
+  const firstTicket = ticketsList[0] || {};
+  const showtime = firstTicket.showtime || {};
+  const room = showtime.room || {};
+
+  // Format tickets for template
+  const tickets = ticketsList.map((t, index) => ({
+    ticketNumber: index + 1,
+    seatName: t.showtime_seat?.seat?.seat_number || 'N/A',
+    seatType: t.showtime_seat?.seat?.seat_type?.name || 'N/A',
+    price: Number(t.ticket_price?.price || 0).toLocaleString('vi-VN'),
+    qrCodeUrl: t.qr_code || ''
+  }));
+
+  // Format combos for template
+  const combos = combosList.map(c => ({
+    comboName: c.combo?.name || 'N/A',
+    comboPrice: Number(c.combo?.total_price || 0).toLocaleString('vi-VN'),
+    comboDescription: c.combo?.description || '',
+    comboItems: (c.combo?.items || []).map(item => ({
+      itemName: item.menu_item?.name || 'N/A',
+      itemQuantity: item.quantity || 0,
+      itemPrice: Number(item.unit_price || 0).toLocaleString('vi-VN')
+    }))
+  }));
+
+  // Format menu items for template
+  const menuItems = menuItemsList.map(m => ({
+    itemName: m.item?.name || 'N/A',
+    itemQuantity: m.quantity || 0,
+    itemUnitPrice: Number(m.unit_price || 0).toLocaleString('vi-VN'),
+    itemTotalPrice: Number(m.total_price || 0).toLocaleString('vi-VN'),
+    itemImage: m.item?.image || ''
+  }));
+
+  // Movie genres
+  const movieGenres = (movie.movie_types || []).map(mt => mt.type).join(', ');
+
+  // Payment method display
+  const paymentMethodMap = {
+    'CASH': 'Tiền mặt',
+    'MOMO': 'MoMo',
+    'VNPAY': 'VNPay'
+  };
+
+  return {
+    orderId: order.id || '',
+    orderDate: order.created_at ? toVietnamTime(order.created_at) : '',
+    totalAmount: Number(order.total_price || 0).toLocaleString('vi-VN'),
+    paymentMethod: paymentMethodMap[order.payment_method] || order.payment_method || '',
+    serviceVat: order.service_vat ? Number(order.service_vat).toLocaleString('vi-VN') : null,
+    movieTitle: movie.title || '',
+    movieDuration: movie.duration ? `${movie.duration} phút` : '',
+    movieGenres: movieGenres,
+    movieImage: movie.image || '',
+    showTime: showtime.start_time ? toVietnamTime(showtime.start_time) : '',
+    endTime: showtime.end_time ? toVietnamTime(showtime.end_time) : '',
+    roomName: room.name || '',
+    roomFormat: room.format?.name || '',
+    hasDiscount: !!discount,
+    discountName: discount?.name || '',
+    discountPercent: discount?.discount_percent || 0,
+    hasEvent: !!event,
+    eventName: event?.name || '',
+    eventDescription: event?.description || '',
+    hasCombos: combos.length > 0,
+    combos,
+    hasMenuItems: menuItems.length > 0,
+    menuItems,
+    tickets,
+    ticketCount: tickets.length
+  };
+};
+
 export const getOrderHistory = async (userId, query) => {
   query.filter = {
     user_id: userId,
   }
   return await repo.findAndPaginate(query);
 }
-

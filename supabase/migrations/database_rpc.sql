@@ -1158,3 +1158,252 @@ AS $$
     WHERE m.is_active = TRUE
     GROUP BY m.id;
 $$;
+
+
+-- =====================================================
+-- HANDLE ORDER AND RELATED DATA - ATOMIC TRANSACTION
+-- Gom tất cả DB mutations khi xử lý đơn hàng vào 1 transaction
+-- Nếu có lỗi ở bất kỳ bước nào → rollback toàn bộ
+-- =====================================================
+DROP FUNCTION IF EXISTS handle_order_and_related_data(JSONB);
+
+CREATE OR REPLACE FUNCTION handle_order_and_related_data(p_payload JSONB)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order JSONB;
+  v_ticket JSONB;
+  v_combo JSONB;
+  v_menu_item JSONB;
+  v_seat_id TEXT;
+  v_item JSONB;
+  v_combo_items JSONB;
+  v_current_stock INT4;
+  v_deduct_qty INT4;
+  v_item_id TEXT;
+  v_item_name TEXT;
+  v_tickets_result JSONB := '[]'::JSONB;
+  v_combos_result JSONB := '[]'::JSONB;
+  v_menu_items_result JSONB := '[]'::JSONB;
+  v_order_result JSONB;
+  v_inserted JSONB;
+BEGIN
+  -- ==========================================
+  -- 1. UPDATE ORDER
+  -- ==========================================
+  v_order := p_payload->'order';
+
+  UPDATE orders SET
+    payment_status = COALESCE((v_order->>'payment_status')::payment_status, payment_status),
+    payment_method = COALESCE(v_order->>'payment_method', payment_method),
+    discount_id = COALESCE(v_order->>'discount_id', discount_id),
+    service_vat = COALESCE((v_order->>'service_vat')::NUMERIC, service_vat),
+    total_price = COALESCE((v_order->>'total_price')::NUMERIC, total_price),
+    trans_id = COALESCE(v_order->>'trans_id', trans_id)
+  WHERE id = v_order->>'id';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order % not found', v_order->>'id';
+  END IF;
+
+  -- Get updated order
+  SELECT jsonb_build_object(
+    'id', o.id,
+    'user_id', o.user_id,
+    'movie_id', o.movie_id,
+    'discount_id', o.discount_id,
+    'service_vat', o.service_vat,
+    'payment_status', o.payment_status,
+    'payment_method', o.payment_method,
+    'trans_id', o.trans_id,
+    'total_price', o.total_price,
+    'created_at', o.created_at,
+    'requested_at', o.requested_at
+  ) INTO v_order_result
+  FROM orders o
+  WHERE o.id = v_order->>'id';
+
+  -- ==========================================
+  -- 2. CREATE TICKETS + UPDATE SEAT STATUS
+  -- ==========================================
+  IF p_payload->'tickets' IS NOT NULL 
+     AND jsonb_typeof(p_payload->'tickets') = 'array' 
+     AND jsonb_array_length(p_payload->'tickets') > 0 THEN
+
+    FOR v_ticket IN SELECT * FROM jsonb_array_elements(p_payload->'tickets')
+    LOOP
+      -- Insert ticket
+      INSERT INTO tickets (id, ticket_price_id, order_id, showtime_seat_id, checked_in, qr_code)
+      VALUES (
+        v_ticket->>'id',
+        v_ticket->>'ticket_price_id',
+        v_order->>'id',
+        v_ticket->>'showtime_seat_id',
+        COALESCE((v_ticket->>'checked_in')::BOOLEAN, FALSE),
+        v_ticket->>'qr_code'
+      )
+      RETURNING jsonb_build_object(
+        'id', id,
+        'ticket_price_id', ticket_price_id,
+        'order_id', order_id,
+        'showtime_seat_id', showtime_seat_id,
+        'checked_in', checked_in,
+        'qr_code', qr_code
+      ) INTO v_inserted;
+
+      v_tickets_result := v_tickets_result || v_inserted;
+
+      -- Update seat status to BOOKED
+      UPDATE show_time_seats 
+      SET status_seat = 'BOOKED'
+      WHERE id = v_ticket->>'showtime_seat_id';
+
+      IF NOT FOUND THEN
+        RAISE EXCEPTION 'ShowTimeSeat % not found', v_ticket->>'showtime_seat_id';
+      END IF;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 3. CREATE COMBO ITEMS IN TICKETS
+  -- ==========================================
+  IF p_payload->'combo_items' IS NOT NULL 
+     AND jsonb_typeof(p_payload->'combo_items') = 'array' 
+     AND jsonb_array_length(p_payload->'combo_items') > 0 THEN
+
+    FOR v_combo IN SELECT * FROM jsonb_array_elements(p_payload->'combo_items')
+    LOOP
+      INSERT INTO combo_item_in_tickets (id, order_id, combo_id)
+      VALUES (
+        v_combo->>'id',
+        v_order->>'id',
+        v_combo->>'combo_id'
+      )
+      RETURNING jsonb_build_object(
+        'id', id,
+        'order_id', order_id,
+        'combo_id', combo_id
+      ) INTO v_inserted;
+
+      v_combos_result := v_combos_result || v_inserted;
+
+      -- Deduct stock for each menu item in this combo
+      FOR v_item IN 
+        SELECT jsonb_build_object(
+          'menu_item_id', ci.menu_item_id,
+          'quantity', ci.quantity
+        )
+        FROM combo_items ci
+        WHERE ci.combo_id = v_combo->>'combo_id'
+          AND ci.is_active = TRUE
+      LOOP
+        v_item_id := v_item->>'menu_item_id';
+        v_deduct_qty := (v_item->>'quantity')::INT4;
+
+        SELECT num_instock, name INTO v_current_stock, v_item_name
+        FROM menu_items
+        WHERE id = v_item_id;
+
+        IF v_current_stock IS NULL THEN
+          RAISE EXCEPTION 'Menu item % not found (in combo %)', v_item_id, v_combo->>'combo_id';
+        END IF;
+
+        IF v_current_stock < v_deduct_qty THEN
+          RAISE EXCEPTION 'Insufficient stock for "%" (combo). Requested: %, Available: %', 
+            v_item_name, v_deduct_qty, v_current_stock;
+        END IF;
+
+        UPDATE menu_items 
+        SET num_instock = num_instock - v_deduct_qty
+        WHERE id = v_item_id;
+      END LOOP;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 4. CREATE MENU ITEMS IN TICKETS + DEDUCT STOCK
+  -- ==========================================
+  IF p_payload->'menu_items' IS NOT NULL 
+     AND jsonb_typeof(p_payload->'menu_items') = 'array' 
+     AND jsonb_array_length(p_payload->'menu_items') > 0 THEN
+
+    FOR v_menu_item IN SELECT * FROM jsonb_array_elements(p_payload->'menu_items')
+    LOOP
+      INSERT INTO menu_item_in_tickets (id, order_id, item_id, quantity, unit_price, total_price)
+      VALUES (
+        v_menu_item->>'id',
+        v_order->>'id',
+        v_menu_item->>'item_id',
+        (v_menu_item->>'quantity')::INT4,
+        (v_menu_item->>'unit_price')::NUMERIC,
+        (v_menu_item->>'total_price')::NUMERIC
+      )
+      RETURNING jsonb_build_object(
+        'id', id,
+        'order_id', order_id,
+        'item_id', item_id,
+        'quantity', quantity,
+        'unit_price', unit_price,
+        'total_price', total_price
+      ) INTO v_inserted;
+
+      v_menu_items_result := v_menu_items_result || v_inserted;
+
+      -- Deduct stock for this menu item
+      v_item_id := v_menu_item->>'item_id';
+      v_deduct_qty := (v_menu_item->>'quantity')::INT4;
+
+      SELECT num_instock, name INTO v_current_stock, v_item_name
+      FROM menu_items
+      WHERE id = v_item_id;
+
+      IF v_current_stock IS NULL THEN
+        RAISE EXCEPTION 'Menu item % not found', v_item_id;
+      END IF;
+
+      IF v_current_stock < v_deduct_qty THEN
+        RAISE EXCEPTION 'Insufficient stock for "%". Requested: %, Available: %', 
+          v_item_name, v_deduct_qty, v_current_stock;
+      END IF;
+
+      UPDATE menu_items 
+      SET num_instock = num_instock - v_deduct_qty
+      WHERE id = v_item_id;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 5. RETURN RESULT
+  -- ==========================================
+  RETURN jsonb_build_object(
+    'success', TRUE,
+    'order', v_order_result,
+    'tickets', v_tickets_result,
+    'combo_items', v_combos_result,
+    'menu_items', v_menu_items_result
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Automatic rollback in plpgsql function
+    RETURN jsonb_build_object(
+      'success', FALSE,
+      'error', SQLERRM,
+      'error_code', SQLSTATE
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION handle_order_and_related_data(JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION handle_order_and_related_data(JSONB) TO service_role;
+
+COMMENT ON FUNCTION handle_order_and_related_data IS 
+'Atomic transaction xử lý đơn hàng:
+- Update order (payment_status, payment_method)
+- Create tickets + update seats to BOOKED
+- Create combo_item_in_tickets + deduct combo stock
+- Create menu_item_in_tickets + deduct menu item stock
+Nếu có lỗi ở bất kỳ bước nào → rollback toàn bộ.';

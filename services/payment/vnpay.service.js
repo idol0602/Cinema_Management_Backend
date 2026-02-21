@@ -113,3 +113,13 @@ export const refundPayment = async ({
     };
   }
 };
+
+export const handleCallback = async (req, res) => {
+  try {
+    // call handleOrderAndRelatedData (RPC)
+    // send mail
+    // return {data, redirect URL}
+  } catch (error) {
+    
+  }
+};

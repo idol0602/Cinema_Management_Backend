@@ -174,3 +174,13 @@ const canRefund = (startTime, paymentMethod, paymentStatus) => {
   const TWO_HOURS = 2 * 60 * 60 * 100;
   return start.getTime() - now.getTime() >= TWO_HOURS && paymentMethod === "MOMO" && paymentStatus === PAYMENT_STATUS.REFUND_PENDING
 }
+
+export const handleCallback = async (req, res) => {
+  try {
+    // call handleOrderAndRelatedData (RPC)
+    // send mail
+    // return {data, redirect URL}
+  } catch (error) {
+    
+  }
+};

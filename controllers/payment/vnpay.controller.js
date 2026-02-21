@@ -76,3 +76,14 @@ export const refundPayment = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+export const handleCallback = async (req, res) => {
+  try {
+    const payload = req.body;
+    const {data, redirectURL} = await service.handleCallback(payload);
+    return res.redirect(redirectURL);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
