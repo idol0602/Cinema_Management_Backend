@@ -700,6 +700,7 @@ BEGIN
     AND EXTRACT(YEAR FROM o.created_at) = p_year
     AND o.payment_status = 'COMPLETED'
   LEFT JOIN tickets t ON t.order_id = o.id
+    AND t.ticket_status = 'CONFIRMED'
   GROUP BY m.month_num
   ORDER BY m.month_num;
 END;
@@ -722,6 +723,7 @@ BEGIN
     (SELECT COUNT(*)::BIGINT FROM users WHERE is_active = true) AS total_users
   FROM orders o
   LEFT JOIN tickets t ON t.order_id = o.id
+    AND t.ticket_status = 'CONFIRMED'
   WHERE o.payment_status = 'COMPLETED'
     AND EXTRACT(MONTH FROM o.created_at) = p_month
     AND EXTRACT(YEAR FROM o.created_at) = p_year;
@@ -743,13 +745,15 @@ BEGIN
     m.id::TEXT AS movie_id,
     m.title::TEXT AS title,
     COALESCE(SUM(o.total_price), 0)::NUMERIC AS revenue,
-    COUNT(DISTINCT o.id)::BIGINT AS tickets,
+    COALESCE(COUNT(DISTINCT t.id), 0)::BIGINT AS tickets,
     COALESCE(m.rating, 0)::NUMERIC AS rating
   FROM movies m
   INNER JOIN orders o ON o.movie_id = m.id 
     AND o.payment_status = 'COMPLETED'
     AND EXTRACT(MONTH FROM o.created_at) = p_month
     AND EXTRACT(YEAR FROM o.created_at) = p_year
+  LEFT JOIN tickets t ON t.order_id = o.id
+    AND t.ticket_status = 'CONFIRMED'
   GROUP BY m.id, m.title, m.rating
   ORDER BY revenue DESC
   LIMIT p_limit;

@@ -14,12 +14,12 @@ export const CACHE_PREFIX = {
 
 // TTL in seconds
 export const TTL = {
-  // HOT: 60, // 1 min - show_times, ticket_prices
-  // WARM: 300, // 5 min - movies, combos, events, discounts, menu_items
-  // COLD: 900, // 15 min - master data (movie_types)
-  HOT: 1, // 1 min - show_times, ticket_prices
-  WARM: 1, // 5 min - movies, combos, events, discounts, menu_items
-  COLD: 1, // 15 min - master data (movie_types)
+  HOT: 60, // 1 min - show_times, ticket_prices
+  WARM: 300, // 5 min - movies, combos, events, discounts, menu_items
+  COLD: 900, // 15 min - master data (movie_types)
+  // HOT: 1, // 1 min - show_times, ticket_prices
+  // WARM: 1, // 5 min - movies, combos, events, discounts, menu_items
+  // COLD: 1, // 15 min - master data (movie_types)
 };
 
 /**
