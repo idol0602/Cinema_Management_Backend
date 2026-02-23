@@ -8,7 +8,7 @@ const MOMO_RESULT_CODE_MAP = {
   1001: "FAILED", // Không đủ tiền
   1003: "EXPIRED", // Timeout auto-cancel
   1005: "EXPIRED", // Link / QR hết hạn
-  1006: "CANCELLED", // User từ chối thanh toán
+  1006: "CANCELED", // User từ chối thanh toán
 };
 
 export const createPayment = async ({ orderId, amount }) => {
@@ -81,7 +81,7 @@ export const createPayment = async ({ orderId, amount }) => {
     };
   } catch (error) {
     return {
-      momoData: {},
+      momoData: null,
       message: error.message || "create payment link failed",
     };
   }
@@ -91,20 +91,28 @@ export const getPaymentStatus = (resultCode) => {
   return MOMO_RESULT_CODE_MAP[resultCode] || "FAILED";
 };
 
-export const refundPayment = async ({ orderId, transId, amount, startTime, paymentMethod, paymentStatus}) => {
+export const refundPayment = async ({
+  orderId,
+  transId,
+  amount,
+  startTime,
+  paymentMethod,
+  paymentStatus,
+}) => {
   try {
     const accessKey = momoConfig.MOMO_ACCESS_KEY;
     const secretKey = momoConfig.MOMO_SECRET_KEY;
     const partnerCode = momoConfig.MOMO_PARTNER_CODE;
 
-    if(!canRefund(startTime, paymentMethod, paymentStatus)) {
+    if (!canRefund(startTime, paymentMethod, paymentStatus)) {
       return {
         success: false,
         momoData,
-        message: "User cannot request a refund because it violates the refund policy",
+        message:
+          "User cannot request a refund because it violates the refund policy",
       };
     }
-    
+
     const refundOrderId = `${orderId}_REFUND_${Date.now()}`;
     const requestId = `${orderId}_refund_${Date.now()}`;
     const lang = "vi";
@@ -134,7 +142,10 @@ export const refundPayment = async ({ orderId, transId, amount, startTime, payme
       signature,
     };
 
-    const refundEndpoint = momoConfig.MOMO_ENDPOINT.replace("/create", "/refund");
+    const refundEndpoint = momoConfig.MOMO_ENDPOINT.replace(
+      "/create",
+      "/refund",
+    );
 
     const momoRes = await fetch(refundEndpoint, {
       method: "POST",
@@ -169,18 +180,53 @@ export const refundPayment = async ({ orderId, transId, amount, startTime, payme
 };
 
 const canRefund = (startTime, paymentMethod, paymentStatus) => {
-  const now = new Date()
-  const start = new Date(startTime)
+  const now = new Date();
+  const start = new Date(startTime);
   const TWO_HOURS = 2 * 60 * 60 * 100;
-  return start.getTime() - now.getTime() >= TWO_HOURS && paymentMethod === "MOMO" && paymentStatus === PAYMENT_STATUS.REFUND_PENDING
-}
+  return (
+    start.getTime() - now.getTime() >= TWO_HOURS &&
+    paymentMethod === "MOMO" &&
+    paymentStatus === PAYMENT_STATUS.REFUND_PENDING
+  );
+};
 
-export const handleCallback = async (req, res) => {
+export const verifyCallback = (query) => {
   try {
-    // call handleOrderAndRelatedData (RPC)
-    // send mail
-    // return {data, redirect URL}
+    const secretKey = momoConfig.MOMO_SECRET_KEY;
+    const { signature, ...rest } = query;
+
+    // To verify MoMo signature, we need to sort keys alphabetically
+    // and join them as key=value&key=value (excluding signature)
+    const rawSignature = Object.keys(rest)
+      .sort()
+      .map((key) => `${key}=${rest[key]}`)
+      .join("&");
+
+    const generatedSignature = crypto
+      .createHmac("sha256", secretKey)
+      .update(rawSignature)
+      .digest("hex");
+
+    if (signature !== generatedSignature) {
+      console.log("MoMo callback verification failed");
+      return { isValid: false };
+    }
+
+    const { orderId, resultCode, transId, amount } = query;
+    const status = getPaymentStatus(parseInt(resultCode));
+
+    const result = {
+      orderId,
+      resultCode: parseInt(resultCode),
+      status,
+      transId,
+      amount,
+    };
+
+    console.log("MoMo callback data:", result);
+    return { isValid: true, ...result };
   } catch (error) {
-    
+    console.error("MoMo verification error:", error);
+    return { isValid: false, error: error.message };
   }
 };

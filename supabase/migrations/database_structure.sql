@@ -38,6 +38,12 @@ CREATE TYPE payment_status AS ENUM (
   'REFUNDED'
 );
 
+CREATE TYPE ticket_status AS ENUM (
+  'PENDING',
+  'CONFIRMED',
+  'CANCELED'
+);
+
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
   name TEXT,
@@ -301,6 +307,7 @@ CREATE TABLE tickets (
   showtime_seat_id TEXT REFERENCES show_time_seats(id),
   checked_in BOOLEAN NOT NULL DEFAULT FALSE,
   qr_code VARCHAR(500) NOT NULL UNIQUE,
+  ticket_status ticket_status NOT NULL DEFAULT 'PENDING',
   UNIQUE (showtime_seat_id)
 );
 

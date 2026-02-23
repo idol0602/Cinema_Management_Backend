@@ -1236,14 +1236,15 @@ BEGIN
     FOR v_ticket IN SELECT * FROM jsonb_array_elements(p_payload->'tickets')
     LOOP
       -- Insert ticket
-      INSERT INTO tickets (id, ticket_price_id, order_id, showtime_seat_id, checked_in, qr_code)
+      INSERT INTO tickets (id, ticket_price_id, order_id, showtime_seat_id, checked_in, qr_code, ticket_status)
       VALUES (
         v_ticket->>'id',
         v_ticket->>'ticket_price_id',
         v_order->>'id',
         v_ticket->>'showtime_seat_id',
         COALESCE((v_ticket->>'checked_in')::BOOLEAN, FALSE),
-        v_ticket->>'qr_code'
+        v_ticket->>'qr_code',
+        'CONFIRMED'
       )
       RETURNING jsonb_build_object(
         'id', id,
@@ -1251,7 +1252,8 @@ BEGIN
         'order_id', order_id,
         'showtime_seat_id', showtime_seat_id,
         'checked_in', checked_in,
-        'qr_code', qr_code
+        'qr_code', qr_code,
+        'ticket_status', ticket_status
       ) INTO v_inserted;
 
       v_tickets_result := v_tickets_result || v_inserted;
@@ -1406,4 +1408,439 @@ COMMENT ON FUNCTION handle_order_and_related_data IS
 - Create tickets + update seats to BOOKED
 - Create combo_item_in_tickets + deduct combo stock
 - Create menu_item_in_tickets + deduct menu item stock
+Nếu có lỗi ở bất kỳ bước nào → rollback toàn bộ.';
+
+
+-- =====================================================
+-- CREATE ORDER AND RELATED DATA - ATOMIC TRANSACTION
+-- Tạo order mới (PENDING) cùng tickets (PENDING),
+-- combo_item_in_tickets, menu_item_in_tickets
+-- và tạm trừ stock trong 1 transaction
+-- =====================================================
+DROP FUNCTION IF EXISTS create_order_and_related_data(JSONB);
+
+CREATE OR REPLACE FUNCTION create_order_and_related_data(p_payload JSONB)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order JSONB;
+  v_ticket JSONB;
+  v_combo JSONB;
+  v_menu_item JSONB;
+  v_item JSONB;
+  v_current_stock INT4;
+  v_deduct_qty INT4;
+  v_item_id TEXT;
+  v_item_name TEXT;
+  v_tickets_result JSONB := '[]'::JSONB;
+  v_combos_result JSONB := '[]'::JSONB;
+  v_menu_items_result JSONB := '[]'::JSONB;
+  v_order_result JSONB;
+  v_inserted JSONB;
+BEGIN
+  -- ==========================================
+  -- 1. CREATE ORDER (PENDING)
+  -- ==========================================
+  v_order := p_payload->'order';
+
+  INSERT INTO orders (
+    id, discount_id, user_id, movie_id,
+    service_vat, payment_status, payment_method,
+    trans_id, total_price, created_at, requested_at
+  ) VALUES (
+    v_order->>'id',
+    NULLIF(v_order->>'discount_id', ''),
+    v_order->>'user_id',
+    v_order->>'movie_id',
+    COALESCE((v_order->>'service_vat')::NUMERIC, 0),
+    'PENDING',
+    v_order->>'payment_method',
+    v_order->>'trans_id',
+    COALESCE((v_order->>'total_price')::NUMERIC, 0),
+    NOW(),
+    NOW()
+  );
+
+  -- Get created order
+  SELECT jsonb_build_object(
+    'id', o.id,
+    'user_id', o.user_id,
+    'movie_id', o.movie_id,
+    'discount_id', o.discount_id,
+    'service_vat', o.service_vat,
+    'payment_status', o.payment_status,
+    'payment_method', o.payment_method,
+    'trans_id', o.trans_id,
+    'total_price', o.total_price,
+    'created_at', o.created_at,
+    'requested_at', o.requested_at
+  ) INTO v_order_result
+  FROM orders o
+  WHERE o.id = v_order->>'id';
+
+  -- ==========================================
+  -- 2. CREATE TICKETS (PENDING) + HOLD SEATS
+  -- ==========================================
+  IF p_payload->'tickets' IS NOT NULL
+     AND jsonb_typeof(p_payload->'tickets') = 'array'
+     AND jsonb_array_length(p_payload->'tickets') > 0 THEN
+
+    FOR v_ticket IN SELECT * FROM jsonb_array_elements(p_payload->'tickets')
+    LOOP
+      -- Insert ticket with PENDING status
+      INSERT INTO tickets (id, ticket_price_id, order_id, showtime_seat_id, checked_in, qr_code, ticket_status)
+      VALUES (
+        v_ticket->>'id',
+        v_ticket->>'ticket_price_id',
+        v_order->>'id',
+        v_ticket->>'showtime_seat_id',
+        FALSE,
+        v_ticket->>'qr_code',
+        'PENDING'
+      )
+      RETURNING jsonb_build_object(
+        'id', id,
+        'ticket_price_id', ticket_price_id,
+        'order_id', order_id,
+        'showtime_seat_id', showtime_seat_id,
+        'checked_in', checked_in,
+        'qr_code', qr_code,
+        'ticket_status', ticket_status
+      ) INTO v_inserted;
+
+      v_tickets_result := v_tickets_result || v_inserted;
+
+      -- Hold seat (set status to HOLDING)
+      -- UPDATE show_time_seats
+      -- SET status_seat = 'HOLDING'
+      -- WHERE id = v_ticket->>'showtime_seat_id'
+      --   AND status_seat = 'AVAILABLE';
+
+      -- IF NOT FOUND THEN
+      --   RAISE EXCEPTION 'ShowTimeSeat % is not available or not found', v_ticket->>'showtime_seat_id';
+      -- END IF;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 3. CREATE COMBO ITEMS IN TICKETS + DEDUCT STOCK
+  -- ==========================================
+  IF p_payload->'combo_items' IS NOT NULL
+     AND jsonb_typeof(p_payload->'combo_items') = 'array'
+     AND jsonb_array_length(p_payload->'combo_items') > 0 THEN
+
+    FOR v_combo IN SELECT * FROM jsonb_array_elements(p_payload->'combo_items')
+    LOOP
+      INSERT INTO combo_item_in_tickets (id, order_id, combo_id)
+      VALUES (
+        v_combo->>'id',
+        v_order->>'id',
+        v_combo->>'combo_id'
+      )
+      RETURNING jsonb_build_object(
+        'id', id,
+        'order_id', order_id,
+        'combo_id', combo_id
+      ) INTO v_inserted;
+
+      v_combos_result := v_combos_result || v_inserted;
+
+      -- Deduct stock for each menu item in this combo
+      FOR v_item IN
+        SELECT jsonb_build_object(
+          'menu_item_id', ci.menu_item_id,
+          'quantity', ci.quantity
+        )
+        FROM combo_items ci
+        WHERE ci.combo_id = v_combo->>'combo_id'
+          AND ci.is_active = TRUE
+      LOOP
+        v_item_id := v_item->>'menu_item_id';
+        v_deduct_qty := (v_item->>'quantity')::INT4;
+
+        SELECT num_instock, name INTO v_current_stock, v_item_name
+        FROM menu_items
+        WHERE id = v_item_id;
+
+        IF v_current_stock IS NULL THEN
+          RAISE EXCEPTION 'Menu item % not found (in combo %)', v_item_id, v_combo->>'combo_id';
+        END IF;
+
+        IF v_current_stock < v_deduct_qty THEN
+          RAISE EXCEPTION 'Insufficient stock for "%" (combo). Requested: %, Available: %',
+            v_item_name, v_deduct_qty, v_current_stock;
+        END IF;
+
+        UPDATE menu_items
+        SET num_instock = num_instock - v_deduct_qty
+        WHERE id = v_item_id;
+      END LOOP;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 4. CREATE MENU ITEMS IN TICKETS + DEDUCT STOCK
+  -- ==========================================
+  IF p_payload->'menu_items' IS NOT NULL
+     AND jsonb_typeof(p_payload->'menu_items') = 'array'
+     AND jsonb_array_length(p_payload->'menu_items') > 0 THEN
+
+    FOR v_menu_item IN SELECT * FROM jsonb_array_elements(p_payload->'menu_items')
+    LOOP
+      INSERT INTO menu_item_in_tickets (id, order_id, item_id, quantity, unit_price, total_price)
+      VALUES (
+        v_menu_item->>'id',
+        v_order->>'id',
+        v_menu_item->>'item_id',
+        (v_menu_item->>'quantity')::INT4,
+        (v_menu_item->>'unit_price')::NUMERIC,
+        (v_menu_item->>'total_price')::NUMERIC
+      )
+      RETURNING jsonb_build_object(
+        'id', id,
+        'order_id', order_id,
+        'item_id', item_id,
+        'quantity', quantity,
+        'unit_price', unit_price,
+        'total_price', total_price
+      ) INTO v_inserted;
+
+      v_menu_items_result := v_menu_items_result || v_inserted;
+
+      -- Deduct stock for this menu item
+      v_item_id := v_menu_item->>'item_id';
+      v_deduct_qty := (v_menu_item->>'quantity')::INT4;
+
+      SELECT num_instock, name INTO v_current_stock, v_item_name
+      FROM menu_items
+      WHERE id = v_item_id;
+
+      IF v_current_stock IS NULL THEN
+        RAISE EXCEPTION 'Menu item % not found', v_item_id;
+      END IF;
+
+      IF v_current_stock < v_deduct_qty THEN
+        RAISE EXCEPTION 'Insufficient stock for "%". Requested: %, Available: %',
+          v_item_name, v_deduct_qty, v_current_stock;
+      END IF;
+
+      UPDATE menu_items
+      SET num_instock = num_instock - v_deduct_qty
+      WHERE id = v_item_id;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 5. RETURN RESULT
+  -- ==========================================
+  RETURN jsonb_build_object(
+    'success', TRUE,
+    'order', v_order_result,
+    'tickets', v_tickets_result,
+    'combo_items', v_combos_result,
+    'menu_items', v_menu_items_result
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'success', FALSE,
+      'error', SQLERRM,
+      'error_code', SQLSTATE
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION create_order_and_related_data(JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_order_and_related_data(JSONB) TO service_role;
+
+COMMENT ON FUNCTION create_order_and_related_data IS
+'Atomic transaction tạo đơn hàng mới:
+- Create order với payment_status = PENDING
+- Create tickets với ticket_status = PENDING + hold seats (HOLDING)
+- Create combo_item_in_tickets + tạm trừ stock combo items
+- Create menu_item_in_tickets + tạm trừ stock menu items
+Nếu có lỗi ở bất kỳ bước nào → rollback toàn bộ.';
+
+
+-- =====================================================
+-- UPDATE ORDER AND RELATED DATA - ATOMIC TRANSACTION
+-- Cập nhật trạng thái order, ticket_status, show_time_seats
+-- Nếu COMPLETED → ticket CONFIRMED, seats BOOKED
+-- Nếu FAILED/CANCELED → ticket CANCELED, seats AVAILABLE, hoàn stock
+-- =====================================================
+DROP FUNCTION IF EXISTS update_order_and_related_data(TEXT, TEXT);
+DROP FUNCTION IF EXISTS update_order_and_related_data(TEXT, TEXT, TEXT);
+
+CREATE OR REPLACE FUNCTION update_order_and_related_data(
+  p_order_id TEXT,
+  p_payment_status TEXT,
+  p_trans_id TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_current_status payment_status;
+  v_new_status payment_status;
+  v_new_ticket_status ticket_status;
+  v_new_seat_status status_seats;
+  v_order_result JSONB;
+  v_ticket RECORD;
+  v_combo_ticket RECORD;
+  v_menu_ticket RECORD;
+  v_item RECORD;
+  v_restore_qty INT4;
+BEGIN
+  -- ==========================================
+  -- 1. VALIDATE ORDER EXISTS & GET CURRENT STATUS
+  -- ==========================================
+  SELECT payment_status INTO v_current_status
+  FROM orders
+  WHERE id = p_order_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Order % not found', p_order_id;
+  END IF;
+
+  -- Cast new status
+  BEGIN
+    v_new_status := p_payment_status::payment_status;
+  EXCEPTION
+    WHEN invalid_text_representation THEN
+      RAISE EXCEPTION 'Invalid payment_status: %', p_payment_status;
+  END;
+
+  -- ==========================================
+  -- 2. DETERMINE NEW TICKET & SEAT STATUS
+  -- ==========================================
+  IF v_new_status = 'COMPLETED' THEN
+    v_new_ticket_status := 'CONFIRMED';
+    v_new_seat_status := 'BOOKED';
+  ELSIF v_new_status IN ('FAILED', 'CANCELED') THEN
+    v_new_ticket_status := 'CANCELED';
+    v_new_seat_status := 'AVAILABLE';
+  ELSIF v_new_status IN ('REFUND_PENDING', 'REFUNDED') THEN
+    v_new_ticket_status := 'CANCELED';
+    v_new_seat_status := 'AVAILABLE';
+  ELSE
+    -- For PENDING or other statuses, no ticket/seat changes
+    v_new_ticket_status := NULL;
+    v_new_seat_status := NULL;
+  END IF;
+
+  -- ==========================================
+  -- 3. UPDATE ORDER STATUS + TRANS_ID
+  -- ==========================================
+  UPDATE orders
+  SET
+    payment_status = v_new_status,
+    trans_id = COALESCE(p_trans_id, trans_id)
+  WHERE id = p_order_id;
+
+  -- Get updated order
+  SELECT jsonb_build_object(
+    'id', o.id,
+    'user_id', o.user_id,
+    'movie_id', o.movie_id,
+    'discount_id', o.discount_id,
+    'service_vat', o.service_vat,
+    'payment_status', o.payment_status,
+    'payment_method', o.payment_method,
+    'trans_id', o.trans_id,
+    'total_price', o.total_price,
+    'created_at', o.created_at,
+    'requested_at', o.requested_at
+  ) INTO v_order_result
+  FROM orders o
+  WHERE o.id = p_order_id;
+
+  -- ==========================================
+  -- 4. UPDATE TICKETS & SHOW_TIME_SEATS
+  -- ==========================================
+  IF v_new_ticket_status IS NOT NULL THEN
+    -- Update all tickets for this order
+    UPDATE tickets
+    SET ticket_status = v_new_ticket_status
+    WHERE order_id = p_order_id;
+
+    -- Update all related show_time_seats
+    UPDATE show_time_seats
+    SET status_seat = v_new_seat_status
+    WHERE id IN (
+      SELECT t.showtime_seat_id
+      FROM tickets t
+      WHERE t.order_id = p_order_id
+    );
+  END IF;
+
+  -- ==========================================
+  -- 5. RESTORE STOCK IF CANCELED/FAILED/REFUNDED
+  -- ==========================================
+  IF v_new_status IN ('FAILED', 'CANCELED', 'REFUNDED') THEN
+    -- Restore stock for combo items
+    FOR v_combo_ticket IN
+      SELECT cit.combo_id
+      FROM combo_item_in_tickets cit
+      WHERE cit.order_id = p_order_id
+    LOOP
+      FOR v_item IN
+        SELECT ci.menu_item_id, ci.quantity
+        FROM combo_items ci
+        WHERE ci.combo_id = v_combo_ticket.combo_id
+          AND ci.is_active = TRUE
+      LOOP
+        UPDATE menu_items
+        SET num_instock = num_instock + v_item.quantity
+        WHERE id = v_item.menu_item_id;
+      END LOOP;
+    END LOOP;
+
+    -- Restore stock for individual menu items
+    FOR v_menu_ticket IN
+      SELECT miit.item_id, miit.quantity
+      FROM menu_item_in_tickets miit
+      WHERE miit.order_id = p_order_id
+    LOOP
+      UPDATE menu_items
+      SET num_instock = num_instock + v_menu_ticket.quantity
+      WHERE id = v_menu_ticket.item_id;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 6. RETURN RESULT
+  -- ==========================================
+  RETURN jsonb_build_object(
+    'success', TRUE,
+    'order', v_order_result,
+    'payment_status', v_new_status::TEXT,
+    'ticket_status', v_new_ticket_status::TEXT,
+    'seat_status', v_new_seat_status::TEXT
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'success', FALSE,
+      'error', SQLERRM,
+      'error_code', SQLSTATE
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION update_order_and_related_data(TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_order_and_related_data(TEXT, TEXT, TEXT) TO service_role;
+
+COMMENT ON FUNCTION update_order_and_related_data IS
+'Atomic transaction cập nhật trạng thái đơn hàng:
+- Update order payment_status, trans_id
+- COMPLETED → ticket CONFIRMED, seats BOOKED
+- FAILED/CANCELED → ticket CANCELED, seats AVAILABLE, hoàn stock
+- REFUND_PENDING/REFUNDED → ticket CANCELED, seats AVAILABLE, hoàn stock
 Nếu có lỗi ở bất kỳ bước nào → rollback toàn bộ.';

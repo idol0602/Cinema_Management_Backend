@@ -152,25 +152,28 @@ export const cancelHoldSeat = async (showTimeSeatId, userId) => {
     };
   }
 
-  // Delete hold from Redis
+  // Delete hold from Redis (always do this if hold exists)
   await redis.del(redisKey);
 
-  // Update database status back to AVAILABLE
+  // Update database status back to AVAILABLE ONLY if it's currently HOLDING
+  // This prevents reverting a BOOKED seat to AVAILABLE
   const { data: updatedSeat, error: updateError } = await supabase
     .from("show_time_seats")
     .update({ status_seat: SEAT_STATUS.AVAILABLE })
     .eq("id", showTimeSeatId)
+    .eq("status_seat", SEAT_STATUS.HOLDING) // Added safety check
     .select()
-    .maybeSingle(); // Changed .single() to .maybeSingle() for consistency and robustness
+    .maybeSingle();
 
-  if (updateError || !updatedSeat) {
+  if (updateError) {
     return {
       data: null,
-      error: updateError || { message: "Failed to update seat status" },
+      error: updateError,
     };
   }
 
-  return { data: updatedSeat, error: null };
+  // If data is null, it means the seat status wasn't HOLDING (likely BOOKED), which is fine.
+  return { data: updatedSeat || { id: showTimeSeatId }, error: null };
 };
 
 export const getHoldInfo = async (showTimeSeatId, userId) => {

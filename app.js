@@ -45,6 +45,8 @@ import { connectRabbitMQ } from "./config/rabbitmq.js";
 
 const app = express();
 
+app.set("trust proxy", 1); // Trust ngrok proxy for Secure cookies
+
 const allowedOrigins = [process.env.CLIENT_URL, process.env.DASHBOARD_URL];
 
 app.set("query parser", (str) =>

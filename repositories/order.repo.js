@@ -20,7 +20,12 @@ export const findById = async (id) => {
 };
 
 export const update = async (id, data) => {
-  return await supabase.from("orders").update(data).eq("id", id).select().single();
+  return await supabase
+    .from("orders")
+    .update(data)
+    .eq("id", id)
+    .select()
+    .single();
 };
 
 export const findAndPaginate = async (query) => {
@@ -42,5 +47,25 @@ export const getOrderDetails = async (orderId) => {
 };
 
 export const handleOrderRpc = async (payload) => {
-  return await supabase.rpc("handle_order_and_related_data", { p_payload: payload });
+  return await supabase.rpc("handle_order_and_related_data", {
+    p_payload: payload,
+  });
+};
+
+export const createOrderRpc = async (payload) => {
+  return await supabase.rpc("create_order_and_related_data", {
+    p_payload: payload,
+  });
+};
+
+export const updateOrderRpc = async (
+  orderId,
+  paymentStatus,
+  transId = null,
+) => {
+  return await supabase.rpc("update_order_and_related_data", {
+    p_order_id: orderId,
+    p_payment_status: paymentStatus,
+    p_trans_id: transId,
+  });
 };

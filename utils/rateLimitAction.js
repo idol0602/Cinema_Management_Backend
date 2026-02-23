@@ -22,6 +22,11 @@ export const RATE_LIMIT_ACTION = {
     },
 
     // ============ ORDER ROUTES ============
+    CREATE_PAYMENT_URL: {
+        action: "create_payment_url",
+        capacity: 10,
+        refillRate: 0.5, // 1 request / 2s
+    },
     CREATE_ORDER: {
         action: "create_order",
         capacity: 10,

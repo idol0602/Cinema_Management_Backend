@@ -1143,16 +1143,16 @@ INSERT INTO orders (id, discount_id, user_id, movie_id, service_vat, payment_sta
 -- =============================================
 -- 27. TICKETS
 -- =============================================
-INSERT INTO tickets (id, ticket_price_id, order_id, showtime_seat_id, checked_in, qr_code) VALUES
--- Order 1: 2 IMAX tickets (weekend)
-('TKT001', 'TP016', 'ORD001', 'STS003', TRUE, 'QR_TKT001_A3B4C5D6'),
-('TKT002', 'TP016', 'ORD001', 'STS004', TRUE, 'QR_TKT002_E7F8G9H0'),
--- Order 2: 2 3D tickets (weekday)
-('TKT003', 'TP007', 'ORD002', 'STS014', FALSE, 'QR_TKT003_I1J2K3L4'),
-('TKT004', 'TP007', 'ORD002', 'STS015', FALSE, 'QR_TKT004_M5N6O7P8'),
--- Order 4: 2 2D tickets (weekday)
-('TKT005', 'TP001', 'ORD004', 'STS001', FALSE, 'QR_TKT005_Q9R0S1T2'),
-('TKT006', 'TP001', 'ORD004', 'STS002', FALSE, 'QR_TKT006_U3V4W5X6');
+INSERT INTO tickets (id, ticket_price_id, order_id, showtime_seat_id, checked_in, qr_code, ticket_status) VALUES
+-- Order 1: 2 IMAX tickets (weekend) - COMPLETED order
+('TKT001', 'TP016', 'ORD001', 'STS003', TRUE, 'QR_TKT001_A3B4C5D6', 'CONFIRMED'),
+('TKT002', 'TP016', 'ORD001', 'STS004', TRUE, 'QR_TKT002_E7F8G9H0', 'CONFIRMED'),
+-- Order 2: 2 3D tickets (weekday) - COMPLETED order
+('TKT003', 'TP007', 'ORD002', 'STS014', FALSE, 'QR_TKT003_I1J2K3L4', 'CONFIRMED'),
+('TKT004', 'TP007', 'ORD002', 'STS015', FALSE, 'QR_TKT004_M5N6O7P8', 'CONFIRMED'),
+-- Order 4: 2 2D tickets (weekday) - PENDING order
+('TKT005', 'TP001', 'ORD004', 'STS001', FALSE, 'QR_TKT005_Q9R0S1T2', 'PENDING'),
+('TKT006', 'TP001', 'ORD004', 'STS002', FALSE, 'QR_TKT006_U3V4W5X6', 'PENDING');
 
 -- =============================================
 -- 28. MENU ITEMS IN TICKETS (Extended)

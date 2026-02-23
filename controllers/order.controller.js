@@ -4,7 +4,8 @@ import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
 
 export const create = async (req, res, next) => {
   try {
-    const { data, error } = await service.create(req.body);
+    const payload = req.body;
+    const { data, error } = await service.create(payload);
     if (error) {
       return fail(res, error);
     }
@@ -98,7 +99,8 @@ export const handleOrderAndRelatedData = async (req, res, next) => {
 
 export const getOrderHistory = async (req, res, next) => {
   try {
-    const id = req.user.id
+    const id = req.user.id;
+    console.log(id);
     const result = await service.getOrderHistory(id, req.query);
     if (result.error) {
       return fail(res, result.error);
@@ -110,6 +112,19 @@ export const getOrderHistory = async (req, res, next) => {
       links: result.links,
       message: "Get orders successfully",
     });
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const createPaymentUrl = async (req, res, next) => {
+  try {
+    const payload = req.body;
+    const { data, error } = await service.createPaymentUrl(payload);
+    if (error) {
+      return fail(res, error);
+    }
+    return success(res, data, "Create payment URL successfully", 201);
   } catch (e) {
     next(e);
   }

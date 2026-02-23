@@ -1,25 +1,40 @@
-import { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat } from "vnpay";
+import {
+  VNPay,
+  ignoreLogger,
+  ProductCode,
+  VnpLocale,
+  dateFormat,
+  IpnFailChecksum,
+  IpnOrderNotFound,
+  IpnInvalidAmount,
+  InpOrderAlreadyConfirmed,
+  IpnUnknownError,
+  IpnSuccess,
+} from "vnpay";
 import { vnpayConfig } from "../../config/payment/vnpay.js";
 
 const VNPAY_RESULT_CODE_MAP = {
   "00": "PAID", // Giao dịch thành công
   11: "EXPIRED", // Hết hạn chờ thanh toán
-  24: "CANCELLED", // User hủy giao dịch
+  24: "CANCELED", // User hủy giao dịch
   51: "FAILED", // Không đủ số dư
   65: "FAILED", // Vượt hạn mức
 };
 
+const createVnpayInstance = () =>
+  new VNPay({
+    tmnCode: vnpayConfig.TMN_CODE,
+    secureSecret: vnpayConfig.SECURE_SECRET,
+    vnpayHost: vnpayConfig.VNPAY_HOST,
+    testMode: true,
+    hashAlgorithm: "SHA512",
+    loggerFn: ignoreLogger,
+  });
+
 export const createPayment = async ({ orderId, amount }) => {
   try {
     const money = Number(amount);
-    const vnpay = new VNPay({
-      tmnCode: vnpayConfig.TMN_CODE,
-      secureSecret: vnpayConfig.SECURE_SECRET,
-      vnpayHost: vnpayConfig.VNPAY_HOST,
-      testMode: true,
-      hashAlgorithm: "SHA512",
-      loggerFn: ignoreLogger,
-    });
+    const vnpay = createVnpayInstance();
 
     const tomrrow = new Date();
     tomrrow.setDate(tomrrow.getDate() + 1);
@@ -42,7 +57,7 @@ export const createPayment = async ({ orderId, amount }) => {
     };
   } catch (error) {
     return {
-      vnpayData: {},
+      vnpayData: null,
       message: error.message || "create payment link failed",
     };
   }
@@ -52,15 +67,6 @@ export const getPaymentStatus = (resultCode) => {
   return VNPAY_RESULT_CODE_MAP[resultCode] || "FAILED";
 };
 
-/**
- * Hoàn tiền VNPay
- * @param {Object} params
- * @param {string} params.orderId - Mã đơn hàng gốc (vnp_TxnRef)
- * @param {string} params.transactionNo - Mã giao dịch VNPay (vnp_TransactionNo từ callback)
- * @param {number} params.amount - Số tiền hoàn
- * @param {string} params.transactionDate - Ngày giao dịch gốc (vnp_PayDate format: yyyyMMddHHmmss)
- * @param {string} params.createBy - Người tạo yêu cầu hoàn tiền
- */
 export const refundPayment = async ({
   orderId,
   transactionNo,
@@ -69,14 +75,7 @@ export const refundPayment = async ({
   createBy = "Admin",
 }) => {
   try {
-    const vnpay = new VNPay({
-      tmnCode: vnpayConfig.TMN_CODE,
-      secureSecret: vnpayConfig.SECURE_SECRET,
-      vnpayHost: vnpayConfig.VNPAY_HOST,
-      testMode: true,
-      hashAlgorithm: "SHA512",
-      loggerFn: ignoreLogger,
-    });
+    const vnpay = createVnpayInstance();
 
     const refundResponse = await vnpay.refund({
       vnp_Amount: Number(amount),
@@ -114,12 +113,81 @@ export const refundPayment = async ({
   }
 };
 
-export const handleCallback = async (req, res) => {
+/**
+ * Verify return URL callback (browser redirect) — chỉ verify, dùng để redirect frontend
+ */
+export const verifyCallback = (query) => {
   try {
-    // call handleOrderAndRelatedData (RPC)
-    // send mail
-    // return {data, redirect URL}
+    const vnpay = createVnpayInstance();
+
+    const isValid = vnpay.verifyReturnUrl(query);
+    if (!isValid) {
+      console.log("VNPay callback verification failed");
+      return { isValid: false };
+    }
+
+    const orderId = query.vnp_TxnRef;
+    const resultCode = query.vnp_ResponseCode;
+    const transId = query.vnp_TransactionNo;
+    const amount = query.vnp_Amount;
+    const status = getPaymentStatus(resultCode);
+
+    const result = {
+      orderId,
+      resultCode,
+      status,
+      transId,
+      amount,
+    };
+
+    console.log("VNPay callback data:", result);
+    return { isValid: true, ...result };
   } catch (error) {
-    
+    console.error("VNPay verification error:", error);
+    return { isValid: false, error: error.message };
+  }
+};
+
+/**
+ * Verify IPN call (server-to-server) — verify + trả response cho VNPay
+ */
+export const verifyIpn = (query) => {
+  try {
+    const vnpay = createVnpayInstance();
+    const verify = vnpay.verifyIpnCall(query);
+
+    if (!verify.isVerified) {
+      console.log("VNPay IPN checksum verification failed");
+    }
+
+    if (!verify.isSuccess) {
+      console.log("VNPay IPN transaction not successful");
+    }
+
+    const orderId = query.vnp_TxnRef;
+    const resultCode = query.vnp_ResponseCode;
+    const transId = query.vnp_TransactionNo;
+    const amount = verify.vnp_Amount;
+    const status = getPaymentStatus(resultCode);
+
+    console.log("VNPay IPN verified:", { orderId, status, transId, amount });
+
+    return {
+      verified: verify.isSuccess && verify.isVerified,
+      orderId,
+      resultCode,
+      status,
+      transId,
+      amount,
+      response: IpnSuccess,
+      // Export response constants cho controller dùng khi cần
+      IpnOrderNotFound,
+      IpnInvalidAmount,
+      InpOrderAlreadyConfirmed,
+      IpnUnknownError,
+    };
+  } catch (error) {
+    console.error("VNPay IPN verification error:", error);
+    return { verified: false, response: IpnUnknownError };
   }
 };

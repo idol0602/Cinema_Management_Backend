@@ -7,6 +7,8 @@ import {
   createOrderSchema,
   updateOrderSchema,
   processOrderSchema,
+  createPaymentUrlSchema,
+  createOrderWithRelatedDataSchema,
 } from "../validators/order.schema.js";
 import { METHODS } from "../utils/method.js";
 import { rateLimitByUser } from "../middlewares/rateLimit.middleware.js";
@@ -22,11 +24,19 @@ router.get("/detail/:id", auth, controller.getOrderDetails);
 router.get("/:id", auth, controller.getById);
 
 router.post(
+  "/create-payment-url",
+  auth,
+  authorize(rootPath, METHODS.POST),
+  rateLimitByUser(RATE_LIMIT_ACTION.CREATE_PAYMENT_URL),
+  validate(createPaymentUrlSchema),
+  controller.createPaymentUrl,
+);
+router.post(
   "/",
   auth,
   authorize(rootPath, METHODS.POST),
   rateLimitByUser(RATE_LIMIT_ACTION.CREATE_ORDER),
-  validate(createOrderSchema),
+  validate(createOrderWithRelatedDataSchema),
   controller.create,
 );
 router.put(
@@ -47,4 +57,3 @@ router.post(
 );
 
 export default router;
-
