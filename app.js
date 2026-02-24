@@ -40,6 +40,7 @@ import vnpayRoutes from "./routes/payment/vnpay.route.js";
 import chatBotRoutes from "./routes/chatbot.route.js";
 import statisticalRoutes from "./routes/statistical.route.js";
 import movieMovieTypesRoutes from "./routes/movie_moive_types.route.js";
+import chatRoutes from "./routes/chat.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { connectRabbitMQ } from "./config/rabbitmq.js";
 
@@ -116,6 +117,7 @@ app.use("/api/agent", agentRoutes);
 app.use("/api/chatbot", chatBotRoutes);
 app.use("/api/statistics", statisticalRoutes);
 app.use("/api/movie-movie-types", movieMovieTypesRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.use("/api/payment/momo", momoRoutes);
 app.use("/api/payment/vnpay", vnpayRoutes);

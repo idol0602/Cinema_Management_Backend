@@ -2,10 +2,13 @@ import "dotenv/config";
 import http from "http";
 import app from "./app.js";
 import { env } from "./config/env.js";
+import { initSocket } from "./config/socket.js";
 
 const PORT = env.PORT;
 
 const server = http.createServer(app);
+
+initSocket(server);
 
 server.timeout = 2 * 60 * 1000;
 server.keepAliveTimeout = 120 * 1000;

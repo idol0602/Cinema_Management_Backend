@@ -1,0 +1,5 @@
+export const CONVERSATION_STATUS = {
+    WAITING: "WAITING",
+    ACTIVE: "ACTIVE",
+    DELETED: "DELETED"
+}

@@ -325,8 +325,39 @@ CREATE TABLE combo_item_in_tickets (
   order_id TEXT REFERENCES orders(id),
   combo_id TEXT REFERENCES combos(id)
 );
+-- Bảng cho hệ thống chat giữa khách hàng và nhân viên
+CREATE TYPE conversation_status AS ENUM (
+  'WAITING',   -- chờ phục vụ
+  'ACTIVE',    -- đã tiếp nhận
+  'DELETED'    -- đã xóa
+);
 
+CREATE TYPE message_type AS ENUM (
+  'TEXT',
+  'IMAGE'
+);
 
+CREATE TABLE conversations (
+  id TEXT PRIMARY KEY,
+  customer_id TEXT REFERENCES users(id),
+  staff_id TEXT REFERENCES users(id),
+  status conversation_status DEFAULT 'WAITING',
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id TEXT REFERENCES users(id),
+  content TEXT,
+  type message_type DEFAULT 'TEXT',
+  image_url TEXT,
+  is_seen BOOLEAN DEFAULT FALSE,
+  seen_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ
+);
+-- Tạo index để tối ưu hóa truy vấn
 
 CREATE INDEX idx_movies_is_active ON movies(is_active);
 CREATE INDEX idx_movie_movie_types_movie ON movie_movie_types(movie_id);
@@ -378,3 +409,12 @@ CREATE INDEX idx_authorizes_role ON authorizes(role_id);
 CREATE INDEX idx_authorizes_action ON authorizes(action_id);
 
 CREATE INDEX idx_actions_method ON actions(method);
+
+CREATE INDEX idx_conversations_customer ON conversations(customer_id);
+CREATE INDEX idx_conversations_staff ON conversations(staff_id);
+CREATE INDEX idx_conversations_status ON conversations(status);
+CREATE INDEX idx_conversations_updated_at ON conversations(updated_at DESC);
+
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_sender ON messages(sender_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at);

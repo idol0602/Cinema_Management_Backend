@@ -182,8 +182,6 @@ export const updateProfile = async ({ userId, payload }) => {
   const hashedPassword = await bcrypt.hash(payload.password, 10);
   const { password, ...updateData } = payload;
 
-  console.log("password", password);
-
   // Check if password is being changed
   const isPasswordChanged = password !== "";
 
