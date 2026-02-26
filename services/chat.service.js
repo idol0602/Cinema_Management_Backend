@@ -12,7 +12,7 @@ export const createConversation = async (customerId) => {
   // Kiểm tra xem customer đã có cuộc hội thoại đang chờ/active chưa
   const { data: existing } =
     await conversationRepo.findActiveByCustomerId(customerId);
-  if (existing) { 
+  if (existing) {
     return { data: existing, error: null };
   }
 
