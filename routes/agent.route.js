@@ -20,4 +20,6 @@ router.post(
   controller.chatWithAgent,
 );
 
+router.post("/callback", controller.callback);
+
 export default router;
