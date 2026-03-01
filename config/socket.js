@@ -6,45 +6,45 @@ import * as userService from "../services/user.service.js";
 import * as roleService from "../services/role.service.js";
 
 let io;
-// {userId: [socketId, socketId]}
+// {userId: Set<socketId>}
 const onlineUsers = new Map();
 // {userId: timeout}
 const offlineTimer = new Map();
 
-const trackingOnline = async (userId,socket) => {
-    if(offlineTimer.has(userId)) {
-      clearTimeout(offlineTimer.get(userId));
-      offlineTimer.delete(userId);
-    }
+const STAFF_ROOM = "staff_room";
 
-    if(!onlineUsers.has(userId)) {
-      onlineUsers.set(userId, new Set());
+const trackingOnline = async (userId, socket) => {
+  if (offlineTimer.has(userId)) {
+    clearTimeout(offlineTimer.get(userId));
+    offlineTimer.delete(userId);
+  }
 
-      await userService.online(userId);
-    }
+  if (!onlineUsers.has(userId)) {
+    onlineUsers.set(userId, new Set());
+    await userService.online(userId);
+  }
 
-    onlineUsers.get(userId).add(socket.id);
+  onlineUsers.get(userId).add(socket.id);
+};
 
-}
-
-const trackingOffline = async (userId,socket) => {
+const trackingOffline = async (userId, socket) => {
   const userSockets = onlineUsers.get(userId);
-      if (!userSockets) return;
+  if (!userSockets) return;
 
-      userSockets.delete(socket.id);
+  userSockets.delete(socket.id);
 
-      if (userSockets.size > 0) return;
+  if (userSockets.size > 0) return;
 
-      onlineUsers.delete(userId);
-      
-      const timeout = setTimeout(async () => {
-        if(!onlineUsers.has(userId)) {
-          await userService.offline(userId);
-        }
-        offlineTimer.delete(userId);
-      }, 5000);
-      offlineTimer.set(userId, timeout);
-}
+  onlineUsers.delete(userId);
+
+  const timeout = setTimeout(async () => {
+    if (!onlineUsers.has(userId)) {
+      await userService.offline(userId);
+    }
+    offlineTimer.delete(userId);
+  }, 5000);
+  offlineTimer.set(userId, timeout);
+};
 
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
@@ -56,20 +56,23 @@ export const initSocket = (httpServer) => {
     pingTimeout: 60000,
     pingInterval: 25000,
   });
-  // middleware
+
+  // Middleware – xác thực JWT
   io.use((socket, next) => {
     let token =
       socket.handshake.auth?.token ||
       socket.handshake.headers?.authorization?.replace("Bearer ", "");
 
     if (!token && socket.handshake.headers?.cookie) {
-      const cookies = socket.handshake.headers.cookie.split(";").reduce((acc, cookie) => {
-        const [key, value] = cookie.split("=");
-        if (key && value) {
+      const cookies = socket.handshake.headers.cookie
+        .split(";")
+        .reduce((acc, cookie) => {
+          const [key, value] = cookie.split("=");
+          if (key && value) {
             acc[key.trim()] = value;
-        }
-        return acc;
-      }, {});
+          }
+          return acc;
+        }, {});
       token = cookies["access_token"];
     }
 
@@ -90,33 +93,48 @@ export const initSocket = (httpServer) => {
     console.log("user connected", socket.user.id);
     const user = socket.user;
     const userId = user.id;
-    const {data, error} = await roleService.findById(user.role);
 
-    if(data.name === "Customer") {
-      socket.join(`customer:${userId}`);
-    } else {
-      socket.join(`staff:${userId}`);
+    // Xác định role
+    let isStaff = false;
+    try {
+      const { data } = await roleService.findById(user.role);
+      if (data && data.name !== "Customer") {
+        isStaff = true;
+      }
+    } catch (err) {
+      console.error("Failed to get role:", err);
     }
 
-    trackingOnline(userId,socket);
+    // Join room theo role
+    if (isStaff) {
+      socket.join(STAFF_ROOM);
+      socket.join(`staff:${userId}`);
+    } else {
+      socket.join(`customer:${userId}`);
+    }
+
+    trackingOnline(userId, socket);
 
     socket.on("disconnect", () => {
-      console.log("user disconnected", socket.user.id);
-      trackingOffline(userId,socket);
+      console.log("user disconnected", userId);
+      trackingOffline(userId, socket);
     });
 
-    // customer tạo chat
+    /* =================================================
+        CONVERSATION EVENTS
+    ================================================= */
+
+    // Customer tạo cuộc hội thoại + gửi tin nhắn đầu
     socket.on("conversation:create", async (callback) => {
       try {
-        const { data, error } =
-          await chatService.createConversation(userId);
-
+        const { data, error } = await chatService.createConversation(userId);
         if (error) return callback?.({ error });
 
+        // Customer join conversation room
         socket.join(`conversation:${data.id}`);
 
-        // báo staff có chat mới
-        io.to("staff").emit("conversation:new", data);
+        // Thông báo tất cả staff/admin có cuộc hội thoại mới (WAITING)
+        io.to(STAFF_ROOM).emit("conversation:new", data);
 
         callback?.({ data });
       } catch (err) {
@@ -124,111 +142,147 @@ export const initSocket = (httpServer) => {
       }
     });
 
-    // join conversation khi mở chat UI
+    // Join conversation room (khi mở chat UI)
     socket.on("conversation:join", ({ conversationId }) => {
       socket.join(`conversation:${conversationId}`);
     });
 
-    // staff nhận chat
-    socket.on(
-      "conversation:assign",
-      async ({ conversationId }, callback) => {
-        try {
-          const { data, error } =
-            await chatService.assignStaff(
-              conversationId,
-              userId
-            );
+    // Staff nhận cuộc hội thoại (assign)
+    socket.on("conversation:assign", async ({ conversationId }, callback) => {
+      try {
+        const { data, error } = await chatService.assignStaff(
+          conversationId,
+          userId
+        );
 
-          if (error) return callback?.({ error });
+        if (error) return callback?.({ error });
 
-          socket.join(`conversation:${conversationId}`);
+        // Staff join room conversation
+        socket.join(`conversation:${conversationId}`);
 
-          io.to(`conversation:${conversationId}`).emit(
-            "conversation:assigned",
-            data
-          );
+        // Thông báo cho TẤT CẢ staff (để remove khỏi waiting list nếu đã assigned bởi người khác)
+        io.to(STAFF_ROOM).emit("conversation:assigned", data);
 
-          callback?.({ data });
-        } catch (err) {
-          callback?.({ error: err.message });
-        }
+        // Thông báo cho customer trong conversation room
+        io.to(`conversation:${conversationId}`).emit(
+          "conversation:assigned",
+          data
+        );
+
+        callback?.({ data });
+      } catch (err) {
+        callback?.({ error: err.message });
       }
-    );
+    });
 
-    // đóng chat
-    socket.on(
-      "conversation:close",
-      async ({ conversationId }, callback) => {
-        try {
-          const { error } =
-            await chatService.closeConversation(conversationId);
+    // Đóng (soft delete) cuộc hội thoại
+    socket.on("conversation:close", async ({ conversationId }, callback) => {
+      try {
+        const { error } = await chatService.closeConversation(conversationId);
+        if (error) return callback?.({ error });
 
-          if (error) return callback?.({ error });
+        // Thông báo cho tất cả trong conversation room
+        io.to(`conversation:${conversationId}`).emit(
+          "conversation:closed",
+          { conversationId }
+        );
 
-          io.to(`conversation:${conversationId}`).emit(
-            "conversation:closed"
-          );
+        // Thông báo cho staff room (để remove khỏi list)
+        io.to(STAFF_ROOM).emit("conversation:closed", { conversationId });
 
-          callback?.({ success: true });
-        } catch (err) {
-          callback?.({ error: err.message });
-        }
+        callback?.({ success: true });
+      } catch (err) {
+        callback?.({ error: err.message });
       }
-    );
+    });
+
+    // Staff/Admin lấy danh sách cuộc hội thoại đang chờ
+    socket.on("conversation:list:waiting", async (callback) => {
+      try {
+        const { data, error } = await chatService.findWaitingConversations();
+        if (error) return callback?.({ error });
+        callback?.({ data });
+      } catch (err) {
+        callback?.({ error: err.message });
+      }
+    });
+
+    // Lấy danh sách cuộc hội thoại của user hiện tại
+    socket.on("conversation:list:mine", async (callback) => {
+      try {
+        const { data, error } =
+          await chatService.findConversationsByUserId(userId);
+        if (error) return callback?.({ error });
+        callback?.({ data });
+      } catch (err) {
+        callback?.({ error: err.message });
+      }
+    });
+
+    // Customer lấy cuộc hội thoại WAITING/ACTIVE hiện tại
+    socket.on("conversation:current", async (callback) => {
+      try {
+        const { data, error } =
+          await chatService.findActiveConversationByCustomer(userId);
+        if (error) return callback?.({ error });
+
+        // Nếu có conversation, join room
+        if (data) {
+          socket.join(`conversation:${data.id}`);
+        }
+
+        callback?.({ data });
+      } catch (err) {
+        callback?.({ error: err.message });
+      }
+    });
 
     /* =================================================
         MESSAGE EVENTS
     ================================================= */
 
-    // gửi text message
-    socket.on(
-      "message:send",
-      async ({ conversationId, content }, callback) => {
-        try {
-          const { data, error } =
-            await chatService.sendMessage(
-              conversationId,
-              userId,
-              content
-            );
+    // Gửi tin nhắn text
+    socket.on("message:send", async ({ conversationId, content }, callback) => {
+      try {
+        const { data, error } = await chatService.sendMessage(
+          conversationId,
+          userId,
+          content
+        );
 
-          if (error) return callback?.({ error });
+        if (error) return callback?.({ error });
 
-          io.to(`conversation:${conversationId}`).emit(
-            "message:new",
-            data
-          );
+        // Phát cho tất cả trong conversation room
+        io.to(`conversation:${conversationId}`).emit("message:new", data);
 
-          callback?.({ data });
-        } catch (err) {
-          callback?.({ error: err.message });
+        // Nếu conversation đang WAITING → phát cho staff room để hiển thị preview
+        const { data: conv } =
+          await chatService.findConversationById(conversationId);
+        if (conv && conv.status === "WAITING") {
+          io.to(STAFF_ROOM).emit("conversation:update", conv);
         }
-      }
-    );
 
-    // gửi image
+        callback?.({ data });
+      } catch (err) {
+        callback?.({ error: err.message });
+      }
+    });
+
+    // Gửi tin nhắn ảnh (base64)
     socket.on(
       "message:image",
-      async (
-        { conversationId, base64Image, content },
-        callback
-      ) => {
+      async ({ conversationId, base64Image, content }, callback) => {
         try {
-          const { data, error } =
-            await chatService.sendImageMessage(
-              conversationId,
-              userId,
-              base64Image,
-              content
-            );
+          const { data, error } = await chatService.sendImageMessage(
+            conversationId,
+            userId,
+            base64Image,
+            content
+          );
 
           if (error) return callback?.({ error });
 
-          io.to(`conversation:${conversationId}`).emit(
-            "message:new",
-            data
-          );
+          io.to(`conversation:${conversationId}`).emit("message:new", data);
 
           callback?.({ data });
         } catch (err) {
@@ -237,20 +291,17 @@ export const initSocket = (httpServer) => {
       }
     );
 
-    // load message history
+    // Load lịch sử tin nhắn
     socket.on(
       "message:list",
       async ({ conversationId, limit, offset }, callback) => {
         try {
-          const { data, error } =
-            await chatService.getMessages(
-              conversationId,
-              limit,
-              offset
-            );
-
+          const { data, error } = await chatService.getMessages(
+            conversationId,
+            limit,
+            offset
+          );
           if (error) return callback?.({ error });
-
           callback?.({ data });
         } catch (err) {
           callback?.({ error: err.message });
@@ -258,54 +309,63 @@ export const initSocket = (httpServer) => {
       }
     );
 
-    // mark read
-    socket.on(
-      "message:read",
-      async ({ conversationId }, callback) => {
-        try {
-          const { error } =
-            await chatService.markAsRead(
-              conversationId,
-              userId
-            );
+    // Đánh dấu đã đọc
+    socket.on("message:read", async ({ conversationId }, callback) => {
+      try {
+        const { error } = await chatService.markAsRead(conversationId, userId);
+        if (error) return callback?.({ error });
 
-          if (error) return callback?.({ error });
+        io.to(`conversation:${conversationId}`).emit("message:read:update", {
+          conversationId,
+          userId,
+        });
 
-          io.to(`conversation:${conversationId}`).emit(
-            "message:read:update",
-            {
-              conversationId,
-              userId,
-            }
-          );
-
-          callback?.({ success: true });
-        } catch (err) {
-          callback?.({ error: err.message });
-        }
+        callback?.({ success: true });
+      } catch (err) {
+        callback?.({ error: err.message });
       }
-    );
+    });
 
-    // unread count
+    // Thu hồi tin nhắn
+    socket.on("message:recall", async ({ messageId }, callback) => {
+      try {
+        const { data, error } = await chatService.recallMessage(
+          messageId,
+          userId
+        );
+
+        if (error) return callback?.({ error });
+
+        // Phát cho tất cả trong conversation room
+        io.to(`conversation:${data.conversation_id}`).emit(
+          "message:recalled",
+          data
+        );
+
+        callback?.({ data });
+      } catch (err) {
+        callback?.({ error: err.message });
+      }
+    });
+
+    // Đếm tin nhắn chưa đọc
     socket.on(
       "message:unread:count",
       async ({ conversationId }, callback) => {
         try {
-          const { data, error } =
-            await chatService.countUnread(
-              conversationId,
-              userId
-            );
-
+          const { data, error } = await chatService.countUnread(
+            conversationId,
+            userId
+          );
           if (error) return callback?.({ error });
-
           callback?.({ count: data });
         } catch (err) {
           callback?.({ error: err.message });
         }
       }
     );
-    });
+  });
+
   return io;
 };
 

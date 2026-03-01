@@ -3,7 +3,7 @@ import { success, fail } from "../utils/response.js";
 
 // ==================== CONVERSATION ====================
 
-// Customer tạo cuộc hội thoại
+// Customer tạo cuộc hội thoại (hoặc lấy lại cuộc hội thoại hiện tại)
 export const createConversation = async (req, res, next) => {
   try {
     const customerId = req.user.id;
@@ -27,7 +27,7 @@ export const getConversationById = async (req, res, next) => {
   }
 };
 
-// Lấy danh sách cuộc hội thoại đang chờ (cho staff)
+// Lấy danh sách cuộc hội thoại đang chờ – dành cho staff
 export const getWaitingConversations = async (req, res, next) => {
   try {
     const { data, error } = await service.findWaitingConversations();
@@ -38,13 +38,39 @@ export const getWaitingConversations = async (req, res, next) => {
   }
 };
 
-// Lấy cuộc hội thoại của user hiện tại
+// Lấy danh sách cuộc hội thoại ACTIVE của staff hiện tại
+export const getMyActiveConversations = async (req, res, next) => {
+  try {
+    const staffId = req.user.id;
+    const { data, error } =
+      await service.findActiveConversationsByStaff(staffId);
+    if (error) return fail(res, error);
+    return success(res, data, "Get active conversations successfully");
+  } catch (e) {
+    next(e);
+  }
+};
+
+// Lấy tất cả cuộc hội thoại của user hiện tại (customer hoặc staff)
 export const getMyConversations = async (req, res, next) => {
   try {
     const userId = req.user.id;
     const { data, error } = await service.findConversationsByUserId(userId);
     if (error) return fail(res, error);
     return success(res, data, "Get my conversations successfully");
+  } catch (e) {
+    next(e);
+  }
+};
+
+// Lấy cuộc hội thoại WAITING/ACTIVE của customer hiện tại (nếu có)
+export const getMyActiveConversation = async (req, res, next) => {
+  try {
+    const customerId = req.user.id;
+    const { data, error } =
+      await service.findActiveConversationByCustomer(customerId);
+    if (error) return fail(res, error);
+    return success(res, data, "Get active conversation successfully");
   } catch (e) {
     next(e);
   }
@@ -63,7 +89,7 @@ export const assignStaff = async (req, res, next) => {
   }
 };
 
-// Đóng cuộc hội thoại
+// Đóng cuộc hội thoại (soft delete → status = DELETED)
 export const closeConversation = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -85,13 +111,13 @@ export const sendMessage = async (req, res, next) => {
     const { content } = req.body;
 
     if (!content || !content.trim()) {
-      return fail(res, { message: "Message content is required" });
+      return fail(res, { message: "Message content is required" }, 400);
     }
 
     const { data, error } = await service.sendMessage(
       conversationId,
       senderId,
-      content.trim(),
+      content.trim()
     );
     if (error) return fail(res, error);
     return success(res, data, "Message sent successfully", 201);
@@ -108,14 +134,14 @@ export const sendImageMessage = async (req, res, next) => {
     const { image, content } = req.body;
 
     if (!image) {
-      return fail(res, { message: "Image data is required" });
+      return fail(res, { message: "Image data is required" }, 400);
     }
 
     const { data, error } = await service.sendImageMessage(
       conversationId,
       senderId,
       image,
-      content || "",
+      content || ""
     );
     if (error) return fail(res, error);
     return success(res, data, "Image message sent successfully", 201);
@@ -134,7 +160,7 @@ export const getMessages = async (req, res, next) => {
     const { data, error } = await service.getMessages(
       conversationId,
       limit,
-      offset,
+      offset
     );
     if (error) return fail(res, error);
     return success(res, data, "Get messages successfully");
@@ -143,7 +169,19 @@ export const getMessages = async (req, res, next) => {
   }
 };
 
-// Đánh dấu đã đọc
+// Lấy tin nhắn cuối cùng của cuộc hội thoại
+export const getLastMessage = async (req, res, next) => {
+  try {
+    const { conversationId } = req.params;
+    const { data, error } = await service.getLastMessage(conversationId);
+    if (error) return fail(res, error);
+    return success(res, data, "Get last message successfully");
+  } catch (e) {
+    next(e);
+  }
+};
+
+// Đánh dấu tất cả tin nhắn trong conversation là đã đọc
 export const markAsRead = async (req, res, next) => {
   try {
     const { conversationId } = req.params;
@@ -157,7 +195,7 @@ export const markAsRead = async (req, res, next) => {
   }
 };
 
-// Đếm tin nhắn chưa đọc
+// Đếm tin nhắn chưa đọc trong conversation
 export const countUnread = async (req, res, next) => {
   try {
     const { conversationId } = req.params;

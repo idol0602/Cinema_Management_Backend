@@ -334,7 +334,8 @@ CREATE TYPE conversation_status AS ENUM (
 
 CREATE TYPE message_type AS ENUM (
   'TEXT',
-  'IMAGE'
+  'IMAGE',
+  'RECALLED'
 );
 
 CREATE TABLE conversations (
