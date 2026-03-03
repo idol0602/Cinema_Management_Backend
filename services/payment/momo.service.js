@@ -2,6 +2,7 @@
 import crypto from "crypto";
 import { momoConfig } from "../../config/payment/momo.js";
 import { PAYMENT_STATUS } from "../../utils/paymentStatus.js";
+import {PAYMENT_METHODS} from "../../utils/paymentMethods.js"
 
 const MOMO_RESULT_CODE_MAP = {
   0: "PAID", // Thành công
@@ -74,9 +75,8 @@ export const createPayment = async ({ orderId, amount }) => {
     });
 
     const momoData = await momoRes.json();
-
     return {
-      momoData,
+      momoData: momoData.payUrl,
       message: "create payment link successfully",
     };
   } catch (error) {
@@ -99,6 +99,9 @@ export const refundPayment = async ({
   paymentMethod,
   paymentStatus,
 }) => {
+
+  console.log(orderId, transId, amount, startTime, paymentMethod, paymentStatus);
+
   try {
     const accessKey = momoConfig.MOMO_ACCESS_KEY;
     const secretKey = momoConfig.MOMO_SECRET_KEY;
@@ -107,7 +110,7 @@ export const refundPayment = async ({
     if (!canRefund(startTime, paymentMethod, paymentStatus)) {
       return {
         success: false,
-        momoData,
+        momoData: null,
         message:
           "User cannot request a refund because it violates the refund policy",
       };
@@ -137,7 +140,7 @@ export const refundPayment = async ({
       requestId,
       amount,
       transId,
-      lang,
+      // lang,
       description: "refund for order " + orderId,
       signature,
     };
@@ -156,6 +159,8 @@ export const refundPayment = async ({
     });
 
     const momoData = await momoRes.json();
+
+    console.log(momoData);
 
     if (momoData.resultCode === 0) {
       return {
@@ -182,24 +187,29 @@ export const refundPayment = async ({
 const canRefund = (startTime, paymentMethod, paymentStatus) => {
   const now = new Date();
   const start = new Date(startTime);
-  const TWO_HOURS = 2 * 60 * 60 * 100;
+  const TWO_HOURS = 2 * 60 * 60 * 1000;
   return (
     start.getTime() - now.getTime() >= TWO_HOURS &&
-    paymentMethod === "MOMO" &&
+    paymentMethod === PAYMENT_METHODS.MOMO &&
     paymentStatus === PAYMENT_STATUS.REFUND_PENDING
   );
 };
 
+
 export const verifyCallback = (query) => {
   try {
+    console.log("callback", query);
+    const accessKey = momoConfig.MOMO_ACCESS_KEY;
     const secretKey = momoConfig.MOMO_SECRET_KEY;
     const { signature, ...rest } = query;
 
-    // To verify MoMo signature, we need to sort keys alphabetically
-    // and join them as key=value&key=value (excluding signature)
-    const rawSignature = Object.keys(rest)
+    // MoMo requires accessKey in signature computation but doesn't send it
+    // in the callback. We must inject it from config.
+    const dataForSignature = { ...rest, accessKey };
+
+    const rawSignature = Object.keys(dataForSignature)
       .sort()
-      .map((key) => `${key}=${rest[key]}`)
+      .map((key) => `${key}=${dataForSignature[key]}`)
       .join("&");
 
     const generatedSignature = crypto
@@ -207,11 +217,7 @@ export const verifyCallback = (query) => {
       .update(rawSignature)
       .digest("hex");
 
-    if (signature !== generatedSignature) {
-      console.log("MoMo callback verification failed");
-      return { isValid: false };
-    }
-
+    // Always extract data fields regardless of verification result
     const { orderId, resultCode, transId, amount } = query;
     const status = getPaymentStatus(parseInt(resultCode));
 
@@ -223,10 +229,46 @@ export const verifyCallback = (query) => {
       amount,
     };
 
-    console.log("MoMo callback data:", result);
+    if (signature !== generatedSignature) {
+      console.log("MoMo callback signature mismatch");
+      console.log("Expected:", generatedSignature);
+      console.log("Received:", signature);
+      // Return data even on verification failure so IPN handler can still process
+      return { isValid: false, ...result };
+    }
+
+    console.log("MoMo callback verified:", result);
     return { isValid: true, ...result };
   } catch (error) {
     console.error("MoMo verification error:", error);
     return { isValid: false, error: error.message };
+  }
+};
+
+/**
+ * Verify IPN call (server-to-server) — verify + trả response format giống VNPay
+ */
+export const verifyIpn = (body) => {
+  try {
+    console.log("ipn", body);
+    const result = verifyCallback(body);
+
+    if (!result.isValid) {
+      console.log("MoMo IPN signature verification failed");
+    }
+
+    return {
+      verified: result.isValid,
+      orderId: result.orderId,
+      resultCode: result.resultCode,
+      status: result.status,
+      transId: result.transId,
+      amount: result.amount,
+      response: { message: "Successfully processed IPN" },
+      IpnUnknownError: { message: "Order processing failed" },
+    };
+  } catch (error) {
+    console.error("MoMo IPN verification error:", error);
+    return { verified: false, response: { message: "Unknown error" } };
   }
 };

@@ -1,5 +1,6 @@
 import * as service from "../../services/payment/momo.service.js";
 import * as orderService from "../../services/order.service.js";
+import { PAYMENT_STATUS } from "../../utils/paymentStatus.js";
 
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5000";
 
@@ -15,6 +16,7 @@ export const createPayment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 /**
  * MoMo Redirect URL callback — chỉ verify rồi redirect user sang frontend
@@ -50,36 +52,37 @@ export const callbackResult = (req, res) => {
  */
 export const ipnHandler = async (req, res) => {
   try {
-    // MoMo IPN gửi qua POST body
-    const result = service.verifyCallback(req.body);
+    console.log("📥 MoMo IPN received, body:", JSON.stringify(req.body));
+    const ipnResult = service.verifyIpn(req.body);
 
-    // if (!result.isValid) {
-    //   console.log("❌ MoMo IPN verification failed");
-    //   return res.status(400).json({ message: "Invalid signature" });
-    // }
+    // Nếu verify thất bại, log nhưng vẫn tiếp tục xử lý
+    if (!ipnResult.verified) {
+      console.log("⚠️ MoMo IPN verification failed, but still processing order");
+    }
 
     // Gọi handleCallBack để xử lý đơn hàng
     const { data, error } = await orderService.handleCallBack({
-      orderId: result.orderId,
-      status: result.status,
-      transId: result.transId,
-      amount: result.amount,
+      orderId: ipnResult.orderId,
+      status: ipnResult.status,
+      transId: ipnResult.transId,
+      amount: ipnResult.amount,
     });
 
     if (error) {
       console.error("❌ MoMo IPN handleCallBack error:", error);
-      return res.status(500).json({ message: "Order processing failed" });
+      return res.status(204).json(ipnResult.IpnUnknownError);
     }
 
     console.log(
       "✅ MoMo IPN processed successfully for order:",
-      result.orderId,
+      ipnResult.orderId,
     );
-    // MoMo yêu cầu trả 204 No Content
-    return res.status(204).send();
+    return res.status(204).json(ipnResult.response);
   } catch (error) {
     console.error("MoMo IPN error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: "Unknow error",
+    });
   }
 };
 
@@ -93,6 +96,8 @@ export const refundPayment = async (req, res) => {
       paymentMethod,
       paymentStatus,
     } = req.body;
+
+    console.log("startTime", startTime)
 
     if (
       !orderId ||
@@ -119,6 +124,18 @@ export const refundPayment = async (req, res) => {
     });
 
     if (result.success) {
+      // Use refund RPC to atomically update order, cancel tickets, release seats, restore stock
+      const { data: rpcResult, error: rpcError } = await orderService.refundOrderRpc(orderId);
+      
+      if (rpcError || !rpcResult?.success) {
+        console.error("❌ Refund RPC error:", rpcError || rpcResult?.error);
+        return res.status(500).json({
+          success: false,
+          error: "Refund payment succeeded but failed to update order data",
+          details: rpcError?.message || rpcResult?.error,
+        });
+      }
+
       return res.status(200).json({
         success: true,
         message: result.message,

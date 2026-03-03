@@ -14,6 +14,7 @@ import { createPayment as vnpayCreatePayment } from "./payment/vnpay.service.js"
 import { toVietnamTime } from "../utils/formatTime.js";
 
 export const create = async (payload) => {
+  console.log("payload", payload)
   const { order, tickets, comboItemInTickets, menuItemInTickets, showTime } =
     payload;
 
@@ -169,6 +170,7 @@ export const findById = (id) => repo.findById(id);
 export const update = (id, data) => repo.update(id, data);
 export const findAndPaginate = (query) => repo.findAndPaginate(query);
 export const getOrderDetails = (orderId) => repo.getOrderDetails(orderId);
+export const refundOrderRpc = (orderId) => repo.refundOrderRpc(orderId);
 
 export const handleOrderAndRelatedData = async (payload) => {
   const { order, tickets, comboItemInTickets, menuItemInTickets, showTime } =
@@ -433,6 +435,7 @@ export const getOrderHistory = async (userId, query) => {
 
 export const createPaymentUrl = async (payload) => {
   const { orderId, amount, paymentMethod } = payload;
+  console.log(paymentMethod);
   let paymentURL = "";
   switch (paymentMethod) {
     case PAYMENT_METHODS.MOMO: {
@@ -442,6 +445,7 @@ export const createPaymentUrl = async (payload) => {
       });
       paymentURL = momoData;
       if (momoData) {
+        console.log("momoData", momoData);
         return {
           data: {
             paymentURL,
@@ -465,6 +469,7 @@ export const createPaymentUrl = async (payload) => {
       });
       paymentURL = vnpayData;
       if (vnpayData) {
+        console.log("vnpayData", vnpayData);
         return {
           data: {
             paymentURL,

@@ -24,10 +24,10 @@ export const createOrderSchema = z.object({
     ])
     .default("PENDING")
     .optional(),
-  payment_method: z.string().optional().default(PAYMENT_METHODS.CASH),
+  payment_method: z.string().optional(),
   total_price: z.number(),
   created_at: z.string().default(new Date().toISOString()).optional(),
-  requested_at: z.string().default(new Date().toISOString()).optional(),
+  requested_at: z.string().optional(),
 });
 
 export const updateOrderSchema = createOrderSchema.partial();

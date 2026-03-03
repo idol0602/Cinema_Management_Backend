@@ -69,3 +69,9 @@ export const updateOrderRpc = async (
     p_trans_id: transId,
   });
 };
+
+export const refundOrderRpc = async (orderId) => {
+  return await supabase.rpc("refund_order_and_related_data", {
+    p_order_id: orderId,
+  });
+};

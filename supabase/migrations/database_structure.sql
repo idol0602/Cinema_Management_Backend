@@ -307,8 +307,7 @@ CREATE TABLE tickets (
   showtime_seat_id TEXT REFERENCES show_time_seats(id),
   checked_in BOOLEAN NOT NULL DEFAULT FALSE,
   qr_code VARCHAR(500) NOT NULL UNIQUE,
-  ticket_status ticket_status NOT NULL DEFAULT 'PENDING',
-  UNIQUE (showtime_seat_id)
+  ticket_status ticket_status NOT NULL DEFAULT 'PENDING'
 );
 
 CREATE TABLE menu_item_in_tickets (
@@ -383,7 +382,8 @@ CREATE INDEX idx_orders_discount ON orders(discount_id);
 CREATE INDEX idx_orders_payment_status ON orders(payment_status);
 CREATE INDEX idx_orders_created_at ON orders(created_at);
 CREATE INDEX idx_tickets_order ON tickets(order_id);
-CREATE INDEX idx_tickets_showtime_seat ON tickets(showtime_seat_id);
+-- Partial unique index ensures a seat can only have ONE active ticket (PENDING/CONFIRMED)
+CREATE UNIQUE INDEX idx_tickets_showtime_seat ON tickets(showtime_seat_id) WHERE ticket_status IN ('PENDING', 'CONFIRMED');
 CREATE INDEX idx_tickets_ticket_price ON tickets(ticket_price_id);
 CREATE INDEX idx_menu_items_type ON menu_items(item_type);
 CREATE INDEX idx_menu_items_active ON menu_items(is_active);

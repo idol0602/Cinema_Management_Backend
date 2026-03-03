@@ -1,5 +1,5 @@
 export const orderPaginateConfig = {
-  sortableColumns: ["created_at", "total_price"],
+  sortableColumns: ["created_at", "total_price","requested_at"],
   searchableColumns: ["id", "movies.title", "users.name", "users.email"],
   filterableColumns: {
     user_id: true,
