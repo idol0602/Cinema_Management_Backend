@@ -14,7 +14,6 @@ import { createPayment as vnpayCreatePayment } from "./payment/vnpay.service.js"
 import { toVietnamTime } from "../utils/formatTime.js";
 
 export const create = async (payload) => {
-  console.log("payload", payload)
   const { order, tickets, comboItemInTickets, menuItemInTickets, showTime } =
     payload;
 
@@ -435,7 +434,6 @@ export const getOrderHistory = async (userId, query) => {
 
 export const createPaymentUrl = async (payload) => {
   const { orderId, amount, paymentMethod } = payload;
-  console.log(paymentMethod);
   let paymentURL = "";
   switch (paymentMethod) {
     case PAYMENT_METHODS.MOMO: {

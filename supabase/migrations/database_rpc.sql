@@ -2020,3 +2020,256 @@ COMMENT ON FUNCTION refund_order_and_related_data IS
 - Release all seats (status_seat = AVAILABLE)
 - Restore stock for combo items and individual menu items
 Nếu có lỗi ở bất kỳ bước nào → rollback toàn bộ.';
+
+
+-- =====================================================
+-- PREPARE PAYLOAD FOR CREATE ORDER
+-- Tổng hợp dữ liệu từ các tham số đơn giản thành payload
+-- đầy đủ cho hàm create trong order.service.js
+-- =====================================================
+DROP FUNCTION IF EXISTS prepare_payload_for_create(TEXT, TEXT, TEXT, TEXT[], TEXT[], JSONB, TEXT, TEXT);
+
+CREATE OR REPLACE FUNCTION prepare_payload_for_create(
+  p_user_id TEXT,
+  p_movie_id TEXT,
+  p_show_time_id TEXT,
+  p_show_time_seat_ids TEXT[],
+  p_combo_ids TEXT[] DEFAULT '{}',
+  p_menu_items JSONB DEFAULT '[]'::JSONB,
+  p_payment_method TEXT DEFAULT 'CASH',
+  p_event_id TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_start_time TIMESTAMPTZ;
+  v_end_time TIMESTAMPTZ;
+  v_day_type day_types;
+  v_room_id TEXT;
+  v_format_id TEXT;
+  v_discount_id TEXT := NULL;
+  v_discount_percent NUMERIC := 0;
+
+  v_seat_id TEXT;
+  v_seat_type_id TEXT;
+  v_ticket_price_id TEXT;
+  v_ticket_price NUMERIC;
+  v_sts_id TEXT;
+
+  v_tickets JSONB := '[]'::JSONB;
+  v_total_ticket_price NUMERIC := 0;
+
+  v_combo_id TEXT;
+  v_combo_price NUMERIC;
+  v_combos JSONB := '[]'::JSONB;
+  v_total_combo_price NUMERIC := 0;
+
+  v_mi JSONB;
+  v_mi_id TEXT;
+  v_mi_qty INT4;
+  v_mi_unit_price NUMERIC;
+  v_mi_total_price NUMERIC;
+  v_menu_items_result JSONB := '[]'::JSONB;
+  v_total_menu_price NUMERIC := 0;
+
+  v_subtotal NUMERIC;
+  v_total_price NUMERIC;
+  v_service_vat NUMERIC := 0;
+BEGIN
+  -- ==========================================
+  -- 1. GET SHOWTIME INFO
+  -- ==========================================
+  SELECT st.start_time, st.end_time, st.day_type, st.room_id
+  INTO v_start_time, v_end_time, v_day_type, v_room_id
+  FROM show_times st
+  WHERE st.id = p_show_time_id AND st.is_active = TRUE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', FALSE, 'error', 'ShowTime not found or inactive: ' || p_show_time_id);
+  END IF;
+
+  -- ==========================================
+  -- 2. GET FORMAT FROM ROOM
+  -- ==========================================
+  SELECT r.format_id INTO v_format_id
+  FROM rooms r
+  WHERE r.id = v_room_id AND r.is_active = TRUE;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', FALSE, 'error', 'Room not found or inactive: ' || v_room_id);
+  END IF;
+
+  -- ==========================================
+  -- 3. BUILD TICKETS (lookup ticket_price for each seat)
+  -- ==========================================
+  FOREACH v_sts_id IN ARRAY p_show_time_seat_ids
+  LOOP
+    -- Get seat_id and seat_type from show_time_seats → seats
+    SELECT s.id, s.type
+    INTO v_seat_id, v_seat_type_id
+    FROM show_time_seats sts
+    JOIN seats s ON s.id = sts.seat_id
+    WHERE sts.id = v_sts_id
+      AND sts.show_time_id = p_show_time_id;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('success', FALSE, 'error', 'ShowTimeSeat not found: ' || v_sts_id);
+    END IF;
+
+    -- Lookup ticket_price by (format_id, seat_type_id, day_type)
+    SELECT tp.id, tp.price
+    INTO v_ticket_price_id, v_ticket_price
+    FROM ticket_prices tp
+    WHERE tp.format_id = v_format_id
+      AND tp.seat_type_id = v_seat_type_id
+      AND tp.day_type = v_day_type
+      AND tp.is_active = TRUE
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+      RETURN jsonb_build_object('success', FALSE, 'error',
+        'Ticket price not found for format=' || v_format_id ||
+        ', seat_type=' || v_seat_type_id ||
+        ', day_type=' || v_day_type::TEXT);
+    END IF;
+
+    v_tickets := v_tickets || jsonb_build_object(
+      'ticket_price_id', v_ticket_price_id,
+      'showtime_seat_id', v_sts_id
+    );
+    v_total_ticket_price := v_total_ticket_price + v_ticket_price;
+  END LOOP;
+
+  -- ==========================================
+  -- 4. BUILD COMBO ITEMS
+  -- ==========================================
+  IF array_length(p_combo_ids, 1) IS NOT NULL THEN
+    FOREACH v_combo_id IN ARRAY p_combo_ids
+    LOOP
+      SELECT c.total_price INTO v_combo_price
+      FROM combos c
+      WHERE c.id = v_combo_id AND c.is_active = TRUE;
+
+      IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', FALSE, 'error', 'Combo not found or inactive: ' || v_combo_id);
+      END IF;
+
+      v_combos := v_combos || jsonb_build_object('combo_id', v_combo_id);
+      v_total_combo_price := v_total_combo_price + v_combo_price;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 5. BUILD MENU ITEMS
+  -- ==========================================
+  IF p_menu_items IS NOT NULL
+     AND jsonb_typeof(p_menu_items) = 'array'
+     AND jsonb_array_length(p_menu_items) > 0 THEN
+
+    FOR v_mi IN SELECT * FROM jsonb_array_elements(p_menu_items)
+    LOOP
+      v_mi_id := v_mi->>'menu_item_id';
+      v_mi_qty := (v_mi->>'quantity')::INT4;
+
+      SELECT mi.price INTO v_mi_unit_price
+      FROM menu_items mi
+      WHERE mi.id = v_mi_id AND mi.is_active = TRUE;
+
+      IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', FALSE, 'error', 'Menu item not found or inactive: ' || v_mi_id);
+      END IF;
+
+      v_mi_total_price := v_mi_unit_price * v_mi_qty;
+
+      v_menu_items_result := v_menu_items_result || jsonb_build_object(
+        'item_id', v_mi_id,
+        'quantity', v_mi_qty,
+        'unit_price', v_mi_unit_price,
+        'total_price', v_mi_total_price
+      );
+      v_total_menu_price := v_total_menu_price + v_mi_total_price;
+    END LOOP;
+  END IF;
+
+  -- ==========================================
+  -- 6. LOOKUP DISCOUNT FROM EVENT (if provided)
+  -- ==========================================
+  IF p_event_id IS NOT NULL AND p_event_id != '' THEN
+    SELECT d.id, d.discount_percent
+    INTO v_discount_id, v_discount_percent
+    FROM discounts d
+    WHERE d.event_id = p_event_id
+      AND d.is_active = TRUE
+      AND CURRENT_DATE BETWEEN d.valid_from AND d.valid_to
+    LIMIT 1;
+    -- If no valid discount found, discount stays 0
+  END IF;
+
+  -- ==========================================
+  -- 7. CALCULATE TOTAL PRICE
+  -- ==========================================
+  v_subtotal := v_total_ticket_price + v_total_combo_price + v_total_menu_price;
+
+  IF v_discount_percent > 0 THEN
+    v_total_price := v_subtotal * (1 - v_discount_percent / 100);
+  ELSE
+    v_total_price := v_subtotal;
+  END IF;
+
+  -- ==========================================
+  -- 8. RETURN PAYLOAD
+  -- ==========================================
+  RETURN jsonb_build_object(
+    'success', TRUE,
+    'payload', jsonb_build_object(
+      'order', jsonb_build_object(
+        'user_id', p_user_id,
+        'movie_id', p_movie_id,
+        'payment_method', p_payment_method,
+        'discount_id', v_discount_id,
+        'service_vat', v_service_vat,
+        'total_price', v_total_price
+      ),
+      'tickets', v_tickets,
+      'comboItemInTickets', v_combos,
+      'menuItemInTickets', v_menu_items_result,
+      'showTime', jsonb_build_object(
+        'start_time', v_start_time,
+        'end_time', v_end_time
+      )
+    ),
+    'breakdown', jsonb_build_object(
+      'ticket_total', v_total_ticket_price,
+      'combo_total', v_total_combo_price,
+      'menu_item_total', v_total_menu_price,
+      'subtotal', v_subtotal,
+      'discount_percent', v_discount_percent,
+      'discount_id', v_discount_id,
+      'total_price', v_total_price
+    )
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'success', FALSE,
+      'error', SQLERRM,
+      'error_code', SQLSTATE
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION prepare_payload_for_create(TEXT, TEXT, TEXT, TEXT[], TEXT[], JSONB, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION prepare_payload_for_create(TEXT, TEXT, TEXT, TEXT[], TEXT[], JSONB, TEXT, TEXT) TO service_role;
+
+COMMENT ON FUNCTION prepare_payload_for_create IS
+'Tổng hợp dữ liệu từ các tham số đơn giản thành payload cho hàm create order:
+- Lấy thông tin showtime (start_time, end_time, day_type)
+- Tìm ticket_price cho mỗi ghế dựa trên format, seat_type, day_type
+- Tổng hợp combo và menu items với giá
+- Lookup discount từ event (nếu có)
+- Tính total_price với discount
+- Trả về payload đúng format cho order.service.create()';
