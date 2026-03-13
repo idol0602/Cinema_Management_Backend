@@ -497,7 +497,12 @@ export const createPaymentUrl = async (payload) => {
 export const handleCallBack = async (payload) => {
   const { orderId, status, transId, amount } = payload;
 
-  console.log("📥 handleCallBack called:", { orderId, status, transId, amount });
+  console.log("📥 handleCallBack called:", {
+    orderId,
+    status,
+    transId,
+    amount,
+  });
 
   // Determine internal status from callback status
   let mappedStatus = PAYMENT_STATUS.FAILED;
@@ -515,81 +520,98 @@ export const handleCallBack = async (payload) => {
     transId,
   );
 
-    if (rpcError) {
-      console.error("❌ RPC error:", rpcError);
-      return { data: null, error: rpcError };
+  if (rpcError) {
+    console.error("❌ RPC error:", rpcError);
+    return { data: null, error: rpcError };
+  }
+
+  if (!rpcResult?.success) {
+    console.error("❌ RPC returned failure:", rpcResult?.error);
+    const errorMsg = rpcResult?.error || "Unknown RPC error";
+
+    // Check if it's an insufficient stock error
+    if (
+      typeof errorMsg === "string" &&
+      errorMsg.includes("Insufficient stock")
+    ) {
+      return {
+        data: null,
+        error: {
+          message: "Không đủ số lượng trong kho cho một hoặc nhiều sản phẩm",
+          code: "INSUFFICIENT_STOCK",
+          details: errorMsg,
+        },
+      };
     }
 
-    if (!rpcResult?.success) {
-      console.error("❌ RPC returned failure:", rpcResult?.error);
-      const errorMsg = rpcResult?.error || "Unknown RPC error";
-      
-      // Check if it's an insufficient stock error
-      if (typeof errorMsg === 'string' && errorMsg.includes('Insufficient stock')) {
-        return {
-          data: null,
-          error: {
-            message: "Không đủ số lượng trong kho cho một hoặc nhiều sản phẩm",
-            code: 'INSUFFICIENT_STOCK',
-            details: errorMsg
-          }
-        };
+    return { data: null, error: errorMsg };
+  }
+
+  console.log("✅ handleCallBack RPC completed for order:", orderId);
+
+  // 5. Clear Redis hold keys (non-DB operation, safe to do after RPC)
+  // Fetch full order details to get the tickets list
+  try {
+    const { data: orderDetails } = await repo.getOrderDetails(orderId);
+    if (orderDetails && orderDetails.tickets) {
+      for (const ticket of orderDetails.tickets) {
+        await showTimeSeatRepo.clearHoldOnConfirm(
+          ticket.showtime_seat_id,
+          orderDetails.user?.id || orderDetails.user_id,
+        );
       }
-      
-      return { data: null, error: errorMsg };
+      console.log("🧹 Redis holds cleared for order:", orderId);
     }
+  } catch (clearError) {
+    console.error("⚠️ Failed to clear Redis holds in callback:", clearError);
+  }
 
-    console.log("✅ handleCallBack RPC completed for order:", orderId);
-
-    // 5. Clear Redis hold keys (non-DB operation, safe to do after RPC)
-    // Fetch full order details to get the tickets list
+  // Send confirmation email via RabbitMQ (only on successful payment)
+  if (status === "PAID") {
     try {
-      const { data: orderDetails } = await repo.getOrderDetails(orderId);
-      if (orderDetails && orderDetails.tickets) {
-        for (const ticket of orderDetails.tickets) {
-          await showTimeSeatRepo.clearHoldOnConfirm(
-            ticket.showtime_seat_id,
-            orderDetails.user?.id || orderDetails.user_id,
-          );
-        }
-        console.log("🧹 Redis holds cleared for order:", orderId);
+      const { data: orderDetails, error: detailsError } =
+        await repo.getOrderDetails(orderId);
+
+      if (!detailsError && orderDetails) {
+        const emailData = buildEmailData(orderDetails);
+        Producer.mail({
+          type: TYPE_MAIL.ORDER_CONFIRMATION,
+          payload: {
+            to: orderDetails.user?.email,
+            orderData: emailData,
+          },
+        });
+        console.log(
+          "📧 Order confirmation email queued for:",
+          orderDetails.user?.email,
+        );
+      } else {
+        console.error(
+          "⚠️ Could not fetch order details for email:",
+          detailsError,
+        );
       }
-    } catch (clearError) {
-      console.error("⚠️ Failed to clear Redis holds in callback:", clearError);
+    } catch (emailError) {
+      // Email failure should not fail the order
+      console.error("⚠️ Failed to queue confirmation email:", emailError);
     }
+  }
 
-    // Send confirmation email via RabbitMQ (only on successful payment)
-    if (status === "PAID") {
-      try {
-        const { data: orderDetails, error: detailsError } =
-          await repo.getOrderDetails(orderId);
+  return {
+    data: {
+      order: rpcResult.order,
+      tickets: rpcResult.tickets,
+      comboItemInTickets: rpcResult.combo_items,
+      menuItemInTickets: rpcResult.menu_items,
+    },
+    error: null,
+  };
+};
 
-        if (!detailsError && orderDetails) {
-          const emailData = buildEmailData(orderDetails);
-          Producer.mail({
-            type: TYPE_MAIL.ORDER_CONFIRMATION,
-            payload: {
-              to: orderDetails.user?.email,
-              orderData: emailData
-            }
-          });
-          console.log("📧 Order confirmation email queued for:", orderDetails.user?.email);
-        } else {
-          console.error("⚠️ Could not fetch order details for email:", detailsError);
-        }
-      } catch (emailError) {
-        // Email failure should not fail the order
-        console.error("⚠️ Failed to queue confirmation email:", emailError);
-      }
-    }
+export const preparePayloadForCreate = async (payload) => {
+  return await repo.preparePayloadForCreate(payload);
+};
 
-    return {
-      data: {
-        order: rpcResult.order,
-        tickets: rpcResult.tickets,
-        comboItemInTickets: rpcResult.combo_items,
-        menuItemInTickets: rpcResult.menu_items
-      },
-      error: null
-    };
+export const getAiBookingStateDetails = async (params) => {
+  return await repo.getAiBookingStateDetails(params);
 };

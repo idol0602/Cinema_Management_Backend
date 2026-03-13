@@ -41,7 +41,6 @@ import chatBotRoutes from "./routes/chatbot.route.js";
 import statisticalRoutes from "./routes/statistical.route.js";
 import movieMovieTypesRoutes from "./routes/movie_moive_types.route.js";
 import chatRoutes from "./routes/chat.route.js";
-import preparePayloadRoutes from "./routes/prepare_payload.route.js";
 import aiBookingRoutes from "./routes/ai_booking.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { connectRabbitMQ } from "./config/rabbitmq.js";
@@ -120,7 +119,6 @@ app.use("/api/chatbot", chatBotRoutes);
 app.use("/api/statistics", statisticalRoutes);
 app.use("/api/movie-movie-types", movieMovieTypesRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/api/prepare-payload", preparePayloadRoutes);
 app.use("/api/ai-booking", aiBookingRoutes);
 
 app.use("/api/payment/momo", momoRoutes);

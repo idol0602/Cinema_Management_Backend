@@ -40,6 +40,9 @@ export const findAndPaginate = async (query) => {
     query: query,
     config: showTimeSeatPaginateConfig,
     baseFilters: {},
+    joinTables: {
+      seats: "seat_id",
+    },
   });
 };
 

@@ -1,82 +1,289 @@
 import * as movieService from "../services/movie.service.js";
 import * as movieTypeService from "../services/movie_type.service.js";
-import * as showTimeService from "../services/show_times.service.js"
-import * as showTimeSeatService from "../services/show_time_seats.service.js"
+import * as showTimeService from "../services/show_times.service.js";
+import * as showTimeSeatService from "../services/show_time_seats.service.js";
 import * as seatService from "../services/seat.service.js";
 import * as comboService from "../services/combos.service.js";
 import * as menuItemService from "../services/menu_items.service.js";
 import * as eventService from "../services/event.service.js";
 import * as eventTypeService from "../services/event_type.service.js";
-import * as ticketPriceService from "../services/ticket_price.service.js"
-import * as formatService from "../services/format.service.js"
-import { paymentMethods } from "../utils/paymentMethods.js";
+import * as ticketPriceService from "../services/ticket_price.service.js";
+import * as formatService from "../services/format.service.js";
+import * as orderService from "../services/order.service.js";
+import { PAYMENT_METHODS } from "../utils/paymentMethods.js";
+import { STEPS } from "../utils/steps.js";
+import { redis } from "../config/redis.js";
+import { env } from "../config/env.js";
 
-export const aiGetNowShowingMovies = async (query = {}) => {
-    return await movieService.findNowShowing(query)
-}
+export const aiGetNowShowingMovies = async (query = { limit: "" }) => {
+  return await movieService.findNowShowing(query);
+};
 
 export const aiGetComingSoonMovies = async (query = {}) => {
-    return await movieService.findComingSoon(query)
-}
+  return await movieService.findComingSoon(query);
+};
 
 export const aiGetMovieById = async (id) => {
-    return await movieService.findById(id)
-}
+  return await movieService.findById(id);
+};
 
 export const aiGetMovieTypes = async () => {
-    return await movieTypeService.findAll()
-}
+  return await movieTypeService.findAll();
+};
 
 //
 export const aiGetShowTimes = async (query = {}) => {
-    return await showTimeService.findAndPaginate(query)
-}
+  return await showTimeService.findAndPaginate(query);
+};
 
 //
-export const aiGetShowTimeSeatsByShowTimeId = async (showTimeId) => {
-    return showTimeSeatService.findByShowTimeId(showTimeId)
-}
+export const aiGetShowTimeSeats = async (query = { limit: "", page: 1 }) => {
+  return showTimeSeatService.findAndPaginate({
+    ...query,
+    limit: "",
+  });
+};
 
 export const aiGetTicketPrices = async (query = {}) => {
-    return await ticketPriceService.findAndPaginate(query)
-}
+  return await ticketPriceService.findAndPaginate(query);
+};
 
 export const aiGetFormats = async () => {
-    return await formatService.findAll()
-}
+  return await formatService.findAll();
+};
 
 export const aiGetSeatTypes = async () => {
-    return await seatService.findAll()
-}
+  return await seatService.findAll();
+};
 
 export const aiGetCombos = async (query = {}) => {
-    return await comboService.findAndPaginate(query)
-}
+  return await comboService.findAndPaginate(query);
+};
 
 export const aiGetComboDetails = async (id) => {
-    return await comboService.findById(id)
-}
+  return await comboService.findById(id);
+};
 
 export const aiGetMenuItems = async (query = {}) => {
-    return await menuItemService.findAndPaginate(query)
-}
+  return await menuItemService.findAndPaginate(query);
+};
 
 export const aiGetMenuItemDetails = async (id) => {
-    return await menuItemService.findById(id)
-}
+  return await menuItemService.findById(id);
+};
 
 export const aiGetEvents = async (query = {}) => {
-    return await eventService.findAndPaginate(query)
-}
+  return await eventService.findAndPaginate(query);
+};
 
 export const aiGetEventDetails = async (id) => {
-    return await eventService.findById(id)
-}
+  return await eventService.findById(id);
+};
 
 export const aiGetEventTypes = async () => {
-    return await eventTypeService.findAll()
-}
+  return await eventTypeService.findAll();
+};
 
 export const aiGetPaymentMethods = () => {
-    return paymentMethods;
-}
+  return PAYMENT_METHODS;
+};
+
+export const aiBulkHoldSeats = async (showTimeSeatIds, userId, ttlSeconds) => {
+  return await showTimeSeatService.bulkHoldSeats(
+    showTimeSeatIds,
+    userId,
+    ttlSeconds,
+  );
+};
+
+export const aiCancelHoldSeats = async (showTimeSeatIds, userId) => {
+  return await showTimeSeatService.bulkCancelHoldSeats(showTimeSeatIds, userId);
+};
+
+export const createOrder = async (payload) => {
+  try {
+    const userId = payload?.order?.user_id;
+    if (!userId) {
+      return { data: null, error: "User ID is required" };
+    }
+
+    const { data: bookingState, error: stateError } =
+      await getAiBookingState(userId);
+    if (stateError) {
+      return { data: null, error: stateError };
+    }
+
+    if (
+      !bookingState ||
+      !bookingState.movieId ||
+      !bookingState.showTimeId ||
+      !bookingState.showTimeSeatIds?.length
+    ) {
+      return { data: null, error: "Incomplete booking state" };
+    }
+
+    const prepareParams = {
+      p_user_id: userId,
+      p_movie_id: bookingState.movieId,
+      p_show_time_id: bookingState.showTimeId,
+      p_show_time_seat_ids: bookingState.showTimeSeatIds,
+      p_combo_ids: bookingState.comboIds || [],
+      p_menu_items: bookingState.menuItems || [],
+      p_payment_method: bookingState.paymentMethod || PAYMENT_METHODS.MOMO,
+      p_event_id: bookingState.eventId || null,
+    };
+
+    const { data: preparedData, error: prepareError } =
+      await orderService.preparePayloadForCreate(prepareParams);
+
+    if (prepareError) {
+      return { data: null, error: prepareError };
+    }
+
+    if (!preparedData?.success || !preparedData?.payload) {
+      return {
+        data: null,
+        error: preparedData?.error || "Failed to prepare payload",
+      };
+    }
+
+    // Call orderService.create with the PREPARED payload
+    const createdOrder = await orderService.create(preparedData.payload);
+    return createdOrder; // createdOrder already returns { data, error } format
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const preparePayloadForCreate = async (payload) => {
+  return await orderService.preparePayloadForCreate(payload);
+};
+
+export const getAiBookingState = async (userId) => {
+  try {
+    const state = await redis.get(`ai_booking_state:${userId}`);
+    if (state) {
+      return { data: JSON.parse(state), error: null };
+    }
+
+    // Initialize default state if not found
+    const defaultState = {
+      step: STEPS.SELECT_MOVIE,
+      movieId: null,
+      showTimeId: null,
+      showTimeSeatIds: [],
+      comboIds: [],
+      menuItems: [],
+      eventId: null,
+      paymentMethod: "",
+    };
+
+    await saveAiBookingState(userId, defaultState);
+
+    return { data: defaultState, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const saveAiBookingState = async (userId, state) => {
+  try {
+    // TTL 24 hours (86400 seconds)
+    await redis.set(`ai_booking_state:${userId}`, JSON.stringify(state), {
+      EX: 86400,
+    });
+    return { data: state, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const clearAiBookingState = async (userId) => {
+  try {
+    const rawState = await redis.get(`ai_booking_state:${userId}`);
+    const bookingState = rawState ? JSON.parse(rawState) : null;
+    const showTimeSeatIds = bookingState?.showTimeSeatIds || [];
+
+    const tasks = [redis.del(`ai_booking_state:${userId}`)];
+    if (showTimeSeatIds.length > 0) {
+      tasks.push(
+        showTimeSeatService.bulkCancelHoldSeats(showTimeSeatIds, userId),
+      );
+    }
+
+    const [deleteResult, cancelResult] = await Promise.allSettled(tasks);
+
+    if (deleteResult.status === "rejected") {
+      return { data: null, error: deleteResult.reason };
+    }
+
+    if (cancelResult && cancelResult.status === "rejected") {
+      return { data: null, error: cancelResult.reason };
+    }
+
+    if (
+      cancelResult &&
+      cancelResult.status === "fulfilled" &&
+      cancelResult.value?.error
+    ) {
+      return { data: null, error: cancelResult.value.error };
+    }
+
+    return {
+      data: {
+        cleared: true,
+        cancelledHolds: showTimeSeatIds,
+      },
+      error: null,
+    };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const getAiBookingStateDetails = async (userId) => {
+  try {
+    const { data: bookingState, error: stateError } =
+      await getAiBookingState(userId);
+    if (stateError) {
+      return { data: null, error: stateError };
+    }
+
+    const params = {
+      p_user_id: userId,
+      p_movie_id: bookingState?.movieId || null,
+      p_show_time_id: bookingState?.showTimeId || null,
+      p_show_time_seat_ids: bookingState?.showTimeSeatIds || [],
+      p_combo_ids: bookingState?.comboIds || [],
+      p_menu_items: bookingState?.menuItems || [],
+      p_event_id: bookingState?.eventId || null,
+      p_payment_method: bookingState?.paymentMethod || PAYMENT_METHODS.CASH,
+    };
+
+    const { data, error } = await orderService.getAiBookingStateDetails(params);
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const chatWithAgent = async (userId, message) => {
+  try {
+    const response = await fetch(env.AGENT_BOOKING_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, message }),
+    });
+    if (!response.ok) {
+      return { data: null, error: `Agent returned status ${response.status}` };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: error.message || error };
+  }
+};

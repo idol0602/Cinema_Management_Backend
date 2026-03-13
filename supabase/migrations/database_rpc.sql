@@ -2273,3 +2273,308 @@ COMMENT ON FUNCTION prepare_payload_for_create IS
 - Lookup discount từ event (nếu có)
 - Tính total_price với discount
 - Trả về payload đúng format cho order.service.create()';
+
+
+-- =====================================================
+-- GET BOOKING STATE DETAILS
+-- Resolve full details from booking state IDs for UI confirmation
+-- =====================================================
+DROP FUNCTION IF EXISTS get_booking_state_details(TEXT, TEXT, TEXT, TEXT[], TEXT[], JSONB, TEXT, TEXT);
+
+CREATE OR REPLACE FUNCTION get_booking_state_details(
+  p_user_id TEXT,
+  p_movie_id TEXT,
+  p_show_time_id TEXT,
+  p_show_time_seat_ids TEXT[] DEFAULT '{}',
+  p_combo_ids TEXT[] DEFAULT '{}',
+  p_menu_items JSONB DEFAULT '[]'::JSONB,
+  p_event_id TEXT DEFAULT NULL,
+  p_payment_method TEXT DEFAULT 'CASH'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_movie JSONB;
+  v_show_time JSONB;
+  v_seats JSONB := '[]'::JSONB;
+  v_combos JSONB := '[]'::JSONB;
+  v_menu_items JSONB := '[]'::JSONB;
+  v_event JSONB := NULL;
+  v_discount JSONB := NULL;
+  v_discount_percent NUMERIC := 0;
+  v_ticket_total NUMERIC := 0;
+  v_combo_total NUMERIC := 0;
+  v_menu_total NUMERIC := 0;
+  v_subtotal NUMERIC := 0;
+  v_discount_amount NUMERIC := 0;
+  v_service_vat_percent NUMERIC := 10;
+  v_service_vat NUMERIC := 0;
+  v_total NUMERIC := 0;
+BEGIN
+  -- Movie
+  IF p_movie_id IS NOT NULL THEN
+    SELECT jsonb_build_object(
+      'id', m.id,
+      'title', m.title,
+      'director', m.director,
+      'country', m.country,
+      'description', m.description,
+      'release_date', m.release_date,
+      'duration', m.duration,
+      'rating', m.rating,
+      'trailer', m.trailer,
+      'image', m.image,
+      'thumbnail', m.thumbnail
+    )
+    INTO v_movie
+    FROM movies m
+    WHERE m.id = p_movie_id;
+  END IF;
+
+  -- Showtime + room + format
+  IF p_show_time_id IS NOT NULL THEN
+    SELECT jsonb_build_object(
+      'id', st.id,
+      'movie_id', st.movie_id,
+      'room_id', st.room_id,
+      'start_time', st.start_time,
+      'end_time', st.end_time,
+      'day_type', st.day_type,
+      'room', jsonb_build_object(
+        'id', r.id,
+        'name', r.name,
+        'location', r.location,
+        'format', jsonb_build_object(
+          'id', f.id,
+          'name', f.name
+        )
+      )
+    )
+    INTO v_show_time
+    FROM show_times st
+    LEFT JOIN rooms r ON r.id = st.room_id
+    LEFT JOIN formats f ON f.id = r.format_id
+    WHERE st.id = p_show_time_id;
+  END IF;
+
+  -- Selected seats with resolved ticket_price
+  IF p_show_time_seat_ids IS NOT NULL AND array_length(p_show_time_seat_ids, 1) > 0 THEN
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', sts.id,
+          'show_time_id', sts.show_time_id,
+          'seat_id', sts.seat_id,
+          'status_seat', sts.status_seat,
+          'seat', jsonb_build_object(
+            'id', s.id,
+            'seat_number', s.seat_number,
+            'seat_type', jsonb_build_object(
+              'id', stt.id,
+              'name', stt.name,
+              'type', stt.name
+            )
+          ),
+          'ticket_price', jsonb_build_object(
+            'id', tp.id,
+            'price', COALESCE(tp.price, 0),
+            'day_type', tp.day_type,
+            'seat_type_id', tp.seat_type_id,
+            'format_id', tp.format_id
+          )
+        )
+      ),
+      '[]'::JSONB
+    ),
+    COALESCE(SUM(COALESCE(tp.price, 0)), 0)
+    INTO v_seats, v_ticket_total
+    FROM show_time_seats sts
+    LEFT JOIN seats s ON s.id = sts.seat_id
+    LEFT JOIN seat_types stt ON stt.id = s.type
+    LEFT JOIN show_times st ON st.id = sts.show_time_id
+    LEFT JOIN rooms r ON r.id = st.room_id
+    LEFT JOIN ticket_prices tp
+      ON tp.format_id = r.format_id
+      AND tp.seat_type_id = s.type
+      AND tp.day_type = st.day_type
+      AND tp.is_active = TRUE
+    WHERE sts.id = ANY(p_show_time_seat_ids);
+  END IF;
+
+  -- Selected combos with combo items
+  IF p_combo_ids IS NOT NULL AND array_length(p_combo_ids, 1) > 0 THEN
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', c.id,
+          'name', c.name,
+          'description', c.description,
+          'total_price', COALESCE(c.total_price, 0),
+          'image', c.image,
+          'is_event_combo', c.is_event_combo,
+          'combo_items', COALESCE(
+            (
+              SELECT jsonb_agg(
+                jsonb_build_object(
+                  'id', ci.id,
+                  'quantity', ci.quantity,
+                  'unit_price', ci.unit_price,
+                  'menu_item', jsonb_build_object(
+                    'id', mi.id,
+                    'name', mi.name,
+                    'description', mi.description,
+                    'price', mi.price,
+                    'item_type', mi.item_type,
+                    'image', mi.image
+                  )
+                )
+              )
+              FROM combo_items ci
+              LEFT JOIN menu_items mi ON mi.id = ci.menu_item_id
+              WHERE ci.combo_id = c.id
+            ),
+            '[]'::JSONB
+          )
+        )
+      ),
+      '[]'::JSONB
+    ),
+    COALESCE(SUM(COALESCE(c.total_price, 0)), 0)
+    INTO v_combos, v_combo_total
+    FROM combos c
+    WHERE c.id = ANY(p_combo_ids);
+  END IF;
+
+  -- Selected menu items from JSONB [{menuItemId|menu_item_id|item_id|id, quantity}]
+  IF p_menu_items IS NOT NULL AND jsonb_typeof(p_menu_items) = 'array' AND jsonb_array_length(p_menu_items) > 0 THEN
+    SELECT COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'item_id', mi.id,
+          'quantity', q.quantity,
+          'unit_price', COALESCE(mi.price, 0),
+          'total_price', COALESCE(mi.price, 0) * q.quantity,
+          'item', jsonb_build_object(
+            'id', mi.id,
+            'name', mi.name,
+            'description', mi.description,
+            'price', mi.price,
+            'item_type', mi.item_type,
+            'image', mi.image
+          )
+        )
+      ),
+      '[]'::JSONB
+    ),
+    COALESCE(SUM(COALESCE(mi.price, 0) * q.quantity), 0)
+    INTO v_menu_items, v_menu_total
+    FROM (
+      SELECT
+        COALESCE(
+          elem->>'menuItemId',
+          elem->>'menu_item_id',
+          elem->>'item_id',
+          elem->>'id'
+        ) AS item_id,
+        GREATEST(COALESCE((elem->>'quantity')::INT, 1), 1) AS quantity
+      FROM jsonb_array_elements(p_menu_items) elem
+      WHERE COALESCE(
+        elem->>'menuItemId',
+        elem->>'menu_item_id',
+        elem->>'item_id',
+        elem->>'id'
+      ) IS NOT NULL
+    ) q
+    JOIN menu_items mi ON mi.id = q.item_id;
+  END IF;
+
+  -- Event + active discount
+  IF p_event_id IS NOT NULL THEN
+    SELECT jsonb_build_object(
+      'id', e.id,
+      'name', e.name,
+      'description', e.description,
+      'start_date', e.start_date,
+      'end_date', e.end_date,
+      'image', e.image,
+      'only_at_counter', e.only_at_counter,
+      'event_type', jsonb_build_object(
+        'id', et.id,
+        'name', et.name
+      )
+    )
+    INTO v_event
+    FROM events e
+    LEFT JOIN event_types et ON et.id = e.event_type_id
+    WHERE e.id = p_event_id;
+
+    SELECT jsonb_build_object(
+      'id', d.id,
+      'name', d.name,
+      'description', d.description,
+      'discount_percent', d.discount_percent,
+      'valid_from', d.valid_from,
+      'valid_to', d.valid_to,
+      'is_active', d.is_active
+    ),
+    COALESCE(d.discount_percent, 0)
+    INTO v_discount, v_discount_percent
+    FROM discounts d
+    WHERE d.event_id = p_event_id
+      AND d.is_active = TRUE
+      AND CURRENT_DATE BETWEEN d.valid_from AND d.valid_to
+    ORDER BY d.created_at DESC
+    LIMIT 1;
+  END IF;
+
+  -- Totals breakdown
+  v_subtotal := COALESCE(v_ticket_total, 0) + COALESCE(v_combo_total, 0) + COALESCE(v_menu_total, 0);
+  v_discount_amount := ROUND(v_subtotal * COALESCE(v_discount_percent, 0) / 100.0);
+  v_service_vat := ROUND((v_subtotal - v_discount_amount) * v_service_vat_percent / 100.0);
+  v_total := (v_subtotal - v_discount_amount) + v_service_vat;
+
+  RETURN jsonb_build_object(
+    'user_id', p_user_id,
+    'payment_method', COALESCE(NULLIF(p_payment_method, ''), 'CASH'),
+    'movie', v_movie,
+    'show_time', v_show_time,
+    'show_time_seats', v_seats,
+    'combos', v_combos,
+    'menu_items', v_menu_items,
+    'event', v_event,
+    'discount', v_discount,
+    'breakdown', jsonb_build_object(
+      'ticket_total', COALESCE(v_ticket_total, 0),
+      'combo_total', COALESCE(v_combo_total, 0),
+      'menu_total', COALESCE(v_menu_total, 0),
+      'subtotal', COALESCE(v_subtotal, 0),
+      'discount_percent', COALESCE(v_discount_percent, 0),
+      'discount_amount', COALESCE(v_discount_amount, 0),
+      'service_vat_percent', v_service_vat_percent,
+      'service_vat', COALESCE(v_service_vat, 0),
+      'total', COALESCE(v_total, 0)
+    )
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'success', FALSE,
+      'error', SQLERRM,
+      'error_code', SQLSTATE
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_booking_state_details(TEXT, TEXT, TEXT, TEXT[], TEXT[], JSONB, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_booking_state_details(TEXT, TEXT, TEXT, TEXT[], TEXT[], JSONB, TEXT, TEXT) TO service_role;
+
+COMMENT ON FUNCTION get_booking_state_details(TEXT, TEXT, TEXT, TEXT[], TEXT[], JSONB, TEXT, TEXT) IS
+'Resolve full details from AI booking state IDs for confirmation UI:
+- Movie, showtime, seats and resolved ticket prices
+- Selected combos with combo items
+- Selected menu items with quantities and totals
+- Event/discount and computed breakdown totals';

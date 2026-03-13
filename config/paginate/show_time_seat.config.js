@@ -9,4 +9,7 @@ export const showTimeSeatPaginateConfig = {
   defaultSortBy: [["show_time_id", "ASC"]],
   defaultLimit: 10,
   maxLimit: 100,
+  joinTableFields: {
+    seats: ["id", "seat_number", "type", "room_id", "seat_types(id, name)"],
+  },
 };

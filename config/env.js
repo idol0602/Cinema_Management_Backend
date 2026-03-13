@@ -27,4 +27,5 @@ export const env = {
   REDIS_URL_BUSINESS: process.env.REDIS_URL_BUSINESS,
   REDIS_URL_CACHE: process.env.REDIS_URL_CACHE,
   RABBITMQ_URL: process.env.RABBITMQ_URL,
+  AGENT_BOOKING_URL: process.env.AGENT_BOOKING_URL,
 };

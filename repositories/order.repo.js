@@ -75,3 +75,11 @@ export const refundOrderRpc = async (orderId) => {
     p_order_id: orderId,
   });
 };
+
+export const preparePayloadForCreate = async (params) => {
+  return await supabase.rpc("prepare_payload_for_create", params);
+};
+
+export const getAiBookingStateDetails = async (params) => {
+  return await supabase.rpc("get_booking_state_details", params);
+};
