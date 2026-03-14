@@ -1,11 +1,15 @@
 import * as service from "../../services/payment/vnpay.service.js";
 import * as orderService from "../../services/order.service.js";
+import { getClientIp } from "../../utils/clientIp.js";
 
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5000";
 
 export const createPayment = async (req, res) => {
   try {
-    const { vnpayData, message } = await service.createPayment(req.body);
+    const { vnpayData, message } = await service.createPayment({
+      ...req.body,
+      clientIp: getClientIp(req),
+    });
     return res.status(201).json({
       message,
       vnpayData,
@@ -110,6 +114,7 @@ export const refundPayment = async (req, res) => {
       amount: parseInt(amount),
       transactionDate,
       createBy: createBy || "Admin",
+      clientIp: getClientIp(req),
     });
 
     if (result.success) {

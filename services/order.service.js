@@ -433,7 +433,7 @@ export const getOrderHistory = async (userId, query) => {
 };
 
 export const createPaymentUrl = async (payload) => {
-  const { orderId, amount, paymentMethod } = payload;
+  const { orderId, amount, paymentMethod, clientIp } = payload;
   let paymentURL = "";
   switch (paymentMethod) {
     case PAYMENT_METHODS.MOMO: {
@@ -464,6 +464,7 @@ export const createPaymentUrl = async (payload) => {
       const { vnpayData, message } = await vnpayCreatePayment({
         orderId,
         amount,
+        clientIp,
       });
       paymentURL = vnpayData;
       if (vnpayData) {

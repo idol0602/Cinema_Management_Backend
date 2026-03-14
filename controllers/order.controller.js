@@ -1,6 +1,7 @@
 import * as service from "../services/order.service.js";
 import { success, fail } from "../utils/response.js";
 import { PAYMENT_STATUS } from "../utils/paymentStatus.js";
+import { getClientIp } from "../utils/clientIp.js";
 
 export const create = async (req, res, next) => {
   try {
@@ -119,7 +120,10 @@ export const getOrderHistory = async (req, res, next) => {
 
 export const createPaymentUrl = async (req, res, next) => {
   try {
-    const payload = req.body;
+    const payload = {
+      ...req.body,
+      clientIp: getClientIp(req),
+    };
     const { data, error } = await service.createPaymentUrl(payload);
     if (error) {
       return fail(res, error);

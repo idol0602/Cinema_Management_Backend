@@ -31,17 +31,18 @@ const createVnpayInstance = () =>
     loggerFn: ignoreLogger,
   });
 
-export const createPayment = async ({ orderId, amount }) => {
+export const createPayment = async ({ orderId, amount, clientIp }) => {
   try {
     const money = Number(amount);
     const vnpay = createVnpayInstance();
+    const ipAddress = clientIp || vnpayConfig.VNPAY_IP_ADDRESS || "127.0.0.1";
 
     const tomrrow = new Date();
     tomrrow.setDate(tomrrow.getDate() + 1);
 
     const vnpayResponse = await vnpay.buildPaymentUrl({
       vnp_Amount: money,
-      vnp_IpAddr: vnpayConfig.VNPAY_IP_ADDRESS,
+      vnp_IpAddr: ipAddress,
       vnp_TxnRef: orderId,
       vnp_OrderInfo: orderId,
       vnp_OrderType: ProductCode.Other,
@@ -73,15 +74,17 @@ export const refundPayment = async ({
   amount,
   transactionDate,
   createBy = "Admin",
+  clientIp,
 }) => {
   try {
     const vnpay = createVnpayInstance();
+    const ipAddress = clientIp || vnpayConfig.VNPAY_IP_ADDRESS || "127.0.0.1";
 
     const refundResponse = await vnpay.refund({
       vnp_Amount: Number(amount),
       vnp_CreateBy: createBy,
       vnp_CreateDate: dateFormat(new Date()),
-      vnp_IpAddr: vnpayConfig.VNPAY_IP_ADDRESS,
+      vnp_IpAddr: ipAddress,
       vnp_OrderInfo: `Hoan tien don hang ${orderId}`,
       vnp_RequestId: `${orderId}_REFUND_${Date.now()}`,
       vnp_TransactionDate: transactionDate,
