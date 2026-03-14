@@ -2,7 +2,7 @@
 import crypto from "crypto";
 import { momoConfig } from "../../config/payment/momo.js";
 import { PAYMENT_STATUS } from "../../utils/paymentStatus.js";
-import {PAYMENT_METHODS} from "../../utils/paymentMethods.js"
+import { PAYMENT_METHODS } from "../../utils/paymentMethods.js";
 
 const MOMO_RESULT_CODE_MAP = {
   0: "PAID", // Thành công
@@ -65,6 +65,13 @@ export const createPayment = async ({ orderId, amount }) => {
       signature,
     };
 
+    console.log("MoMo create payment config:", {
+      orderId,
+      redirectUrl,
+      ipnUrl,
+      requestType,
+    });
+
     // ===== CALL MOMO WITH FETCH =====
     const momoRes = await fetch(momoConfig.MOMO_ENDPOINT, {
       method: "POST",
@@ -75,6 +82,22 @@ export const createPayment = async ({ orderId, amount }) => {
     });
 
     const momoData = await momoRes.json();
+
+    console.log("MoMo create payment response:", {
+      resultCode: momoData?.resultCode,
+      message: momoData?.message,
+      payUrl: momoData?.payUrl,
+      deeplink: momoData?.deeplink,
+      qrCodeUrl: momoData?.qrCodeUrl,
+    });
+
+    if (momoData?.resultCode !== 0 || !momoData?.payUrl) {
+      return {
+        momoData: null,
+        message: momoData?.message || "create payment link failed",
+      };
+    }
+
     return {
       momoData: momoData.payUrl,
       message: "create payment link successfully",
@@ -99,8 +122,14 @@ export const refundPayment = async ({
   paymentMethod,
   paymentStatus,
 }) => {
-
-  console.log(orderId, transId, amount, startTime, paymentMethod, paymentStatus);
+  console.log(
+    orderId,
+    transId,
+    amount,
+    startTime,
+    paymentMethod,
+    paymentStatus,
+  );
 
   try {
     const accessKey = momoConfig.MOMO_ACCESS_KEY;
@@ -194,7 +223,6 @@ const canRefund = (startTime, paymentMethod, paymentStatus) => {
     paymentStatus === PAYMENT_STATUS.REFUND_PENDING
   );
 };
-
 
 export const verifyCallback = (query) => {
   try {
