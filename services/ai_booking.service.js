@@ -15,6 +15,36 @@ import { STEPS } from "../utils/steps.js";
 import { redis } from "../config/redis.js";
 import { env } from "../config/env.js";
 
+const normalizeMenuItemsForPrepare = (menuItems = []) => {
+  if (!Array.isArray(menuItems)) {
+    return [];
+  }
+
+  return menuItems
+    .map((item) => {
+      const menuItemId =
+        item?.menu_item_id || item?.menuItemId || item?.item_id || item?.id;
+      const quantity = Number(item?.quantity || 0);
+
+      if (!menuItemId || quantity <= 0) {
+        return null;
+      }
+
+      return {
+        menu_item_id: menuItemId,
+        quantity,
+      };
+    })
+    .filter(Boolean);
+};
+
+const normalizeEventId = (eventId) => {
+  if (!eventId || eventId === "null" || eventId === "undefined") {
+    return null;
+  }
+  return eventId;
+};
+
 export const aiGetNowShowingMovies = async (query = { limit: "" }) => {
   return await movieService.findNowShowing(query);
 };
@@ -127,9 +157,9 @@ export const createOrder = async (userId) => {
       p_show_time_id: bookingState.showTimeId,
       p_show_time_seat_ids: bookingState.showTimeSeatIds,
       p_combo_ids: bookingState.comboIds || [],
-      p_menu_items: bookingState.menuItems || [],
+      p_menu_items: normalizeMenuItemsForPrepare(bookingState.menuItems),
       p_payment_method: bookingState.paymentMethod || PAYMENT_METHODS.MOMO,
-      p_event_id: bookingState.eventId || null,
+      p_event_id: normalizeEventId(bookingState.eventId),
     };
 
     const { data: preparedData, error: prepareError } =
@@ -145,6 +175,13 @@ export const createOrder = async (userId) => {
         error: preparedData?.error || "Failed to prepare payload",
       };
     }
+
+    console.log("AI prepare payload summary:", {
+      orderDiscountId: preparedData?.payload?.order?.discount_id || null,
+      ticketCount: preparedData?.payload?.tickets?.length || 0,
+      comboCount: preparedData?.payload?.comboItemInTickets?.length || 0,
+      menuItemCount: preparedData?.payload?.menuItemInTickets?.length || 0,
+    });
 
     // Call orderService.create with the PREPARED payload
     const createdOrder = await orderService.create(preparedData.payload);
@@ -254,8 +291,8 @@ export const getAiBookingStateDetails = async (userId) => {
       p_show_time_id: bookingState?.showTimeId || null,
       p_show_time_seat_ids: bookingState?.showTimeSeatIds || [],
       p_combo_ids: bookingState?.comboIds || [],
-      p_menu_items: bookingState?.menuItems || [],
-      p_event_id: bookingState?.eventId || null,
+      p_menu_items: normalizeMenuItemsForPrepare(bookingState?.menuItems),
+      p_event_id: normalizeEventId(bookingState?.eventId),
       p_payment_method: bookingState?.paymentMethod || PAYMENT_METHODS.CASH,
     };
 

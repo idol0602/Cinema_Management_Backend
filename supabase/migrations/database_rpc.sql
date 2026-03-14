@@ -2171,7 +2171,12 @@ BEGIN
 
     FOR v_mi IN SELECT * FROM jsonb_array_elements(p_menu_items)
     LOOP
-      v_mi_id := v_mi->>'menu_item_id';
+      v_mi_id := COALESCE(
+        v_mi->>'menu_item_id',
+        v_mi->>'menuItemId',
+        v_mi->>'item_id',
+        v_mi->>'id'
+      );
       v_mi_qty := (v_mi->>'quantity')::INT4;
 
       SELECT mi.price INTO v_mi_unit_price
