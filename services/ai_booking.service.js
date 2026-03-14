@@ -165,6 +165,8 @@ export const createOrder = async (userId) => {
     const { data: preparedData, error: prepareError } =
       await orderService.preparePayloadForCreate(prepareParams);
 
+    console.log("prepareData", preparedData);
+
     if (prepareError) {
       return { data: null, error: prepareError };
     }
