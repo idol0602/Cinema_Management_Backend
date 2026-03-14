@@ -4,7 +4,7 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { initSocket } from "./config/socket.js";
 
-const PORT = env.PORT;
+const PORT = process.env.PORT || env.PORT || 3000;
 
 const server = http.createServer(app);
 
@@ -15,5 +15,5 @@ server.keepAliveTimeout = 120 * 1000;
 server.headersTimeout = 130 * 1000;
 
 server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
 });

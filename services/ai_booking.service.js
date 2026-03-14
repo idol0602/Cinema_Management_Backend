@@ -100,9 +100,8 @@ export const aiCancelHoldSeats = async (showTimeSeatIds, userId) => {
   return await showTimeSeatService.bulkCancelHoldSeats(showTimeSeatIds, userId);
 };
 
-export const createOrder = async (payload) => {
+export const createOrder = async (userId) => {
   try {
-    const userId = payload?.order?.user_id;
     if (!userId) {
       return { data: null, error: "User ID is required" };
     }

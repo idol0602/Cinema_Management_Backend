@@ -32,14 +32,13 @@ router.get("/payment-methods", controller.getPaymentMethods);
 
 router.post("/hold/bulk", controller.bulkHoldSeats);
 router.delete("/hold/bulk", controller.cancelHoldSeats);
-router.post("/bookings", controller.createBooking);
-router.post("/bookings/prepare", controller.preparePayloadForCreate);
+router.post("/booking", auth, controller.createBooking);
 
 router.get("/state/:id", controller.getAiBookingState);
 router.get("/state/:id/details", controller.getAiBookingStateDetails);
 router.post("/state", controller.saveAiBookingState);
-router.delete("/state/:id", controller.clearAiBookingState);
+router.delete("/state/:id", auth, controller.clearAiBookingState);
 
-router.post("/chat", controller.chatWithAgent);
+router.post("/chat", auth, controller.chatWithAgent);
 
 export default router;

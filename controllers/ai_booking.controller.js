@@ -190,18 +190,10 @@ export const getPaymentMethods = async (req, res, next) => {
   }
 };
 
-//
 export const createBooking = async (req, res, next) => {
   try {
-    const payload = req.body;
-    // ensure user_id is set
-    if (!payload.order) {
-      payload.order = {};
-    }
-    if (!payload.order.user_id) {
-      payload.order.user_id = req.user.id;
-    }
-    const { data, error } = await service.createOrder(payload);
+    const userId = req.user.id;
+    const { data, error } = await service.createOrder(userId);
     if (error) {
       return fail(res, error);
     }
