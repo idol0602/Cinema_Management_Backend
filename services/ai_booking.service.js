@@ -162,6 +162,14 @@ export const createOrder = async (userId) => {
       p_event_id: normalizeEventId(bookingState.eventId),
     };
 
+    console.log("AI booking state snapshot:", {
+      userId,
+      step: bookingState.step,
+      comboCount: bookingState?.comboIds?.length || 0,
+      menuItemCount: bookingState?.menuItems?.length || 0,
+      hasEvent: !!normalizeEventId(bookingState?.eventId),
+    });
+
     const { data: preparedData, error: prepareError } =
       await orderService.preparePayloadForCreate(prepareParams);
 
@@ -226,11 +234,46 @@ export const getAiBookingState = async (userId) => {
 
 export const saveAiBookingState = async (userId, state) => {
   try {
+    const current = await redis.get(`ai_booking_state:${userId}`);
+    const currentState = current
+      ? JSON.parse(current)
+      : {
+          step: STEPS.SELECT_MOVIE,
+          movieId: null,
+          showTimeId: null,
+          showTimeSeatIds: [],
+          comboIds: [],
+          menuItems: [],
+          eventId: null,
+          paymentMethod: "",
+        };
+
+    const hasOwn = (obj, key) =>
+      Object.prototype.hasOwnProperty.call(obj || {}, key);
+
+    const mergedState = {
+      ...currentState,
+      ...(hasOwn(state, "step") ? { step: state.step } : {}),
+      ...(hasOwn(state, "movieId") ? { movieId: state.movieId } : {}),
+      ...(hasOwn(state, "showTimeId") ? { showTimeId: state.showTimeId } : {}),
+      ...(hasOwn(state, "showTimeSeatIds")
+        ? { showTimeSeatIds: state.showTimeSeatIds || [] }
+        : {}),
+      ...(hasOwn(state, "comboIds") ? { comboIds: state.comboIds || [] } : {}),
+      ...(hasOwn(state, "menuItems")
+        ? { menuItems: state.menuItems || [] }
+        : {}),
+      ...(hasOwn(state, "eventId") ? { eventId: state.eventId } : {}),
+      ...(hasOwn(state, "paymentMethod")
+        ? { paymentMethod: state.paymentMethod }
+        : {}),
+    };
+
     // TTL 24 hours (86400 seconds)
-    await redis.set(`ai_booking_state:${userId}`, JSON.stringify(state), {
+    await redis.set(`ai_booking_state:${userId}`, JSON.stringify(mergedState), {
       EX: 86400,
     });
-    return { data: state, error: null };
+    return { data: mergedState, error: null };
   } catch (error) {
     return { data: null, error };
   }
