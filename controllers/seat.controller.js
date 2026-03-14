@@ -97,6 +97,7 @@ export const findAndPaginate = async (req, res, next) => {
 };
 
 export const importFromExcel = async (req, res, next) => {
+  const uploadedPath = req.file?.path;
   try {
     const { roomId } = req.body;
     if (!req.file) {
@@ -119,9 +120,22 @@ export const importFromExcel = async (req, res, next) => {
         },
       });
     }
-    const result = await service.importFromExcel(req.file.path, roomId);
+    if (!uploadedPath) {
+      return res.status(500).json({
+        success: false,
+        message: "Uploaded file path is unavailable",
+        data: {
+          imported: 0,
+          skipped: 0,
+        },
+      });
+    }
 
-    fs.unlinkSync(req.file.path);
+    const result = await service.importFromExcel(uploadedPath, roomId);
+
+    if (uploadedPath && fs.existsSync(uploadedPath)) {
+      fs.unlinkSync(uploadedPath);
+    }
 
     if (result.error) {
       throw result.error;
@@ -138,6 +152,8 @@ export const importFromExcel = async (req, res, next) => {
   } catch (e) {
     next(e);
   } finally {
-    fs.unlinkSync(req.file.path);
+    if (uploadedPath && fs.existsSync(uploadedPath)) {
+      fs.unlinkSync(uploadedPath);
+    }
   }
 };
