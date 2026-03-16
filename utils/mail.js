@@ -8,6 +8,30 @@ import { env } from "../config/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const parseBoolean = (value, defaultValue) => {
+  if (value === undefined || value === null || value === "")
+    return defaultValue;
+  return String(value).toLowerCase() === "true";
+};
+
+const smtpHost = env.MAIL_HOST || "smtp.gmail.com";
+const smtpPort = Number(env.MAIL_PORT) || 587;
+const smtpSecure = parseBoolean(env.MAIL_SECURE, smtpPort === 465);
+
+const transporter = nodemailer.createTransport({
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpSecure,
+  requireTLS: !smtpSecure,
+  auth: {
+    user: env.MAIL_USER,
+    pass: env.MAIL_PASS,
+  },
+  connectionTimeout: Number(env.MAIL_CONNECTION_TIMEOUT || 15000),
+  greetingTimeout: Number(env.MAIL_GREETING_TIMEOUT || 10000),
+  socketTimeout: Number(env.MAIL_SOCKET_TIMEOUT || 20000),
+});
 /**
  * Load and compile MJML template with data
  * @param {string} templateName - Name of the MJML template file (without extension)
@@ -60,14 +84,6 @@ const compileTemplate = async (templateName, data) => {
  * @returns {Promise<object>} Nodemailer info object
  */
 export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: env.MAIL_USER,
-      pass: env.MAIL_PASS,
-    },
-  });
-
   const info = await transporter.sendMail({
     from: `"${from}" <${env.MAIL_USER}>`,
     to,

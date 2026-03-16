@@ -30,26 +30,29 @@
     </mj-section>
 
     <!-- Body -->
-    <mj-section background-color="#ffffff" padding="40px 30px" border-radius="8px">
+    <mj-section background-color="#ffffff" padding="40px 30px 20px 30px">
       <mj-column>
         <mj-text font-size="20px" font-weight="600" color="#18181b" padding-bottom="10px">
           Xin chào {{userName}},
         </mj-text>
 
-        <mj-text color="#52525b" padding-bottom="20px">
+        <mj-text color="#52525b" padding-bottom="0px">
           Cảm ơn bạn đã đăng ký tài khoản tại META CINEMA. Vui lòng sử dụng mã OTP dưới đây để hoàn tất đăng ký:
         </mj-text>
+      </mj-column>
+    </mj-section>
 
-        <!-- OTP Code Box -->
-        <mj-section background-color="#fef3c7" border-radius="8px" padding="10px 0">
-          <mj-column>
-            <mj-text css-class="otp-code" align="center" font-size="36px" font-weight="700" color="#f97316" letter-spacing="12px">
-              {{otpCode}}
-            </mj-text>
-          </mj-column>
-        </mj-section>
+    <mj-section background-color="#ffffff" padding="0 30px">
+      <mj-column background-color="#fef3c7" padding="12px 0">
+        <mj-text css-class="otp-code" align="center" font-size="36px" font-weight="700" color="#f97316" letter-spacing="12px" padding="0">
+          {{otpCode}}
+        </mj-text>
+      </mj-column>
+    </mj-section>
 
-        <mj-text color="#71717a" padding-top="20px" font-size="13px">
+    <mj-section background-color="#ffffff" padding="20px 30px 30px 30px">
+      <mj-column>
+        <mj-text color="#71717a" padding-top="0" font-size="13px">
           ⏱ Mã OTP có hiệu lực trong <b>{{expirationTime}}</b>. Vui lòng không chia sẻ mã này với bất kỳ ai.
         </mj-text>
 
