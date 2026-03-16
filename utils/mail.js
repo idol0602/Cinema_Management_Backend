@@ -15,8 +15,16 @@ const parseBoolean = (value, defaultValue) => {
   return String(value).toLowerCase() === "true";
 };
 
-const smtpHost = env.MAIL_HOST || "smtp.gmail.com";
-const smtpPort = Number(env.MAIL_PORT) || 587;
+const brevoApiKeyRaw = String(env.BREVO_API_KEY || "").trim();
+const hasBrevoApiKey = brevoApiKeyRaw.length > 0;
+const isBrevoHttpApiKey = /^xkeysib-/i.test(brevoApiKeyRaw);
+const isBrevoSmtpKey = /^xsmtpsib-/i.test(brevoApiKeyRaw);
+
+const isBrevoSmtpUser = /@smtp-brevo\.com$/i.test(String(env.MAIL_USER || ""));
+const smtpHost =
+  env.MAIL_HOST ||
+  (isBrevoSmtpUser ? "smtp-relay.brevo.com" : "smtp.gmail.com");
+const smtpPort = Number(env.MAIL_PORT) || (isBrevoSmtpUser ? 587 : 587);
 const smtpSecure = parseBoolean(env.MAIL_SECURE, smtpPort === 465);
 const smtpAuth = {
   user: env.MAIL_USER,
@@ -53,15 +61,24 @@ const getFallbackConfigs = () => {
 };
 
 const sendWithBrevoApi = async ({ to, subject, html, from }) => {
-  if (!env.BREVO_API_KEY) {
+  if (!hasBrevoApiKey) {
     throw new Error("BREVO_API_KEY is not configured");
+  }
+
+  if (!isBrevoHttpApiKey) {
+    if (isBrevoSmtpKey) {
+      throw new Error(
+        "BREVO_API_KEY is using SMTP key format (xsmtpsib-...). Please use API key format xkeysib-... from Brevo API keys tab.",
+      );
+    }
+    throw new Error("BREVO_API_KEY format is invalid");
   }
 
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "api-key": env.BREVO_API_KEY,
+      "api-key": brevoApiKeyRaw,
     },
     body: JSON.stringify({
       sender: {
@@ -135,9 +152,24 @@ const compileTemplate = async (templateName, data) => {
 export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
   let lastError = null;
 
+  console.log("[Mail] delivery config", {
+    smtpHost,
+    smtpPort,
+    smtpSecure,
+    hasBrevoApiKey,
+    brevoApiKeyType: hasBrevoApiKey
+      ? isBrevoHttpApiKey
+        ? "http-api"
+        : isBrevoSmtpKey
+          ? "smtp-key"
+          : "unknown"
+      : "none",
+    isBrevoSmtpUser,
+  });
+
   // In cloud environments, SMTP ports are often blocked or unstable.
   // If Brevo API key exists, use HTTPS API first to avoid SMTP timeouts.
-  if (env.BREVO_API_KEY) {
+  if (hasBrevoApiKey) {
     try {
       const result = await sendWithBrevoApi({ to, subject, html, from });
       console.log("[Mail] Delivery via Brevo API succeeded");
