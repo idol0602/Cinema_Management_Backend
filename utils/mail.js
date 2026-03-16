@@ -23,6 +23,8 @@ const smtpAuth = {
   pass: String(env.MAIL_PASS || "").replace(/\s+/g, ""),
 };
 
+const fromEmail = env.MAIL_FROM_EMAIL || env.MAIL_USER;
+
 const buildTransportOptions = ({ host, port, secure }) => ({
   host,
   port,
@@ -48,6 +50,36 @@ const getFallbackConfigs = () => {
   }
 
   return configs;
+};
+
+const sendWithBrevoApi = async ({ to, subject, html, from }) => {
+  if (!env.BREVO_API_KEY) {
+    throw new Error("BREVO_API_KEY is not configured");
+  }
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: from,
+        email: fromEmail,
+      },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Brevo API failed (${response.status}): ${errorBody}`);
+  }
+
+  return await response.json();
 };
 /**
  * Load and compile MJML template with data
@@ -112,7 +144,7 @@ export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
 
     try {
       const info = await transporter.sendMail({
-        from: `"${from}" <${env.MAIL_USER}>`,
+        from: `"${from}" <${fromEmail}>`,
         to,
         subject,
         html,
@@ -128,6 +160,19 @@ export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
           message: error?.message,
         },
       );
+    }
+  }
+
+  if (env.BREVO_API_KEY) {
+    try {
+      const result = await sendWithBrevoApi({ to, subject, html, from });
+      console.log("[Mail] Fallback delivery via Brevo API succeeded");
+      return result;
+    } catch (apiError) {
+      console.error("[Mail] Brevo API fallback failed", {
+        message: apiError?.message,
+      });
+      lastError = apiError;
     }
   }
 
