@@ -18,20 +18,37 @@ const parseBoolean = (value, defaultValue) => {
 const smtpHost = env.MAIL_HOST || "smtp.gmail.com";
 const smtpPort = Number(env.MAIL_PORT) || 587;
 const smtpSecure = parseBoolean(env.MAIL_SECURE, smtpPort === 465);
+const smtpAuth = {
+  user: env.MAIL_USER,
+  pass: String(env.MAIL_PASS || "").replace(/\s+/g, ""),
+};
 
-const transporter = nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpSecure,
-  requireTLS: !smtpSecure,
-  auth: {
-    user: env.MAIL_USER,
-    pass: env.MAIL_PASS,
-  },
+const buildTransportOptions = ({ host, port, secure }) => ({
+  host,
+  port,
+  secure,
+  requireTLS: !secure,
+  auth: smtpAuth,
   connectionTimeout: Number(env.MAIL_CONNECTION_TIMEOUT || 15000),
   greetingTimeout: Number(env.MAIL_GREETING_TIMEOUT || 10000),
   socketTimeout: Number(env.MAIL_SOCKET_TIMEOUT || 20000),
 });
+
+const getFallbackConfigs = () => {
+  const configs = [{ host: smtpHost, port: smtpPort, secure: smtpSecure }];
+
+  // Gmail on cloud providers can work on 465 even if 587 times out.
+  if (smtpHost === "smtp.gmail.com") {
+    if (!(smtpPort === 465 && smtpSecure)) {
+      configs.push({ host: smtpHost, port: 465, secure: true });
+    }
+    if (!(smtpPort === 587 && !smtpSecure)) {
+      configs.push({ host: smtpHost, port: 587, secure: false });
+    }
+  }
+
+  return configs;
+};
 /**
  * Load and compile MJML template with data
  * @param {string} templateName - Name of the MJML template file (without extension)
@@ -84,13 +101,37 @@ const compileTemplate = async (templateName, data) => {
  * @returns {Promise<object>} Nodemailer info object
  */
 export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
-  const info = await transporter.sendMail({
-    from: `"${from}" <${env.MAIL_USER}>`,
-    to,
-    subject,
-    html,
-  });
-  return info;
+  const transportConfigs = getFallbackConfigs();
+  let lastError = null;
+
+  for (let i = 0; i < transportConfigs.length; i++) {
+    const config = transportConfigs[i];
+    const transporter = nodemailer.createTransport(
+      buildTransportOptions(config),
+    );
+
+    try {
+      const info = await transporter.sendMail({
+        from: `"${from}" <${env.MAIL_USER}>`,
+        to,
+        subject,
+        html,
+      });
+      return info;
+    } catch (error) {
+      lastError = error;
+      console.error(
+        `[Mail] SMTP attempt ${i + 1}/${transportConfigs.length} failed (${config.host}:${config.port}, secure=${config.secure})`,
+        {
+          code: error?.code,
+          command: error?.command,
+          message: error?.message,
+        },
+      );
+    }
+  }
+
+  throw lastError;
 };
 
 /**
