@@ -9,24 +9,6 @@ const invalidateCache = () => {
   Producer.deleteCache(`${CACHE_PREFIX.MOVIES}:*`);
 };
 
-// export const create = async (payload) => {
-//   const {movie,movieTypes} = payload;
-//   const movieWithId = {
-//     id: uuidv4(),
-//     ...movie,
-//   };
-//   const result = await repo.create(movieWithId);
-//   if (!result.error) {
-//     await Promise.all(movieTypes.map((movieType) => {
-//       return movieMovieTypeRepo.create({
-//         movie_id: movieWithId.id,
-//         movie_type_id: movieType,
-//       });
-//     }));
-//     invalidateCache();
-//   }
-//   return result;
-// };
 export const create = async (payload) => {
   const { movie, movieTypes } = payload;
 
@@ -60,12 +42,6 @@ export const create = async (payload) => {
 export const findAll = () => repo.findAll();
 export const findById = (id) => repo.findById(id);
 export const findByName = (name) => repo.findByName(name);
-
-// export const update = async (id, data) => {
-//   const result = await repo.update(id, data);
-//   if (!result.error) invalidateCache();
-//   return result;
-// };
 
 export const update = async (id, payload) => {
   const { movie, movieTypes } = payload;
@@ -123,22 +99,6 @@ export const importFromExcel = async (filePath) => {
     const worksheet = workbook.Sheets[sheetName];
 
     const data = xlsx.utils.sheet_to_json(worksheet);
-
-    // const movies = data.map((row) => ({
-    //   id: uuidv4(),
-    //   title: row.title || row.Title,
-    //   director: row.director || row.Director,
-    //   description: row.description || row.Description || null,
-    //   release_date:
-    //     row.release_date || row.ReleaseDate || new Date().toISOString(),
-    //   duration: parseInt(row.duration || row.Duration) || null,
-    //   rating: parseFloat(row.rating || row.Rating) || 0,
-    //   image: row.image || row.Image || null,
-    //   thumbnail: row.thumbnail || row.Thumbnail || null,
-    //   trailer: row.trailer || row.Trailer || null,
-    //   movie_type_id: row.movie_type_id || row.MovieTypeId,
-    //   is_active: row.is_active !== undefined ? row.is_active : true,
-    // }));
 
     const movies = data.map((row) => ({
       id: uuidv4(),

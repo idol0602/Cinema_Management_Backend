@@ -187,6 +187,7 @@ export const createOrder = async (userId) => {
     }
 
     console.log("AI prepare payload summary:", {
+      inputEventId: normalizeEventId(bookingState?.eventId),
       orderDiscountId: preparedData?.payload?.order?.discount_id || null,
       ticketCount: preparedData?.payload?.tickets?.length || 0,
       comboCount: preparedData?.payload?.comboItemInTickets?.length || 0,

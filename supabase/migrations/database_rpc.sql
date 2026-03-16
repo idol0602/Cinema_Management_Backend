@@ -2208,7 +2208,9 @@ BEGIN
     FROM discounts d
     WHERE d.event_id = p_event_id
       AND d.is_active = TRUE
-      AND CURRENT_DATE BETWEEN d.valid_from AND d.valid_to
+      -- AND (d.valid_from IS NULL OR d.valid_from::date <= CURRENT_DATE)
+      -- AND (d.valid_to IS NULL OR d.valid_to::date >= CURRENT_DATE)
+    ORDER BY d.created_at DESC
     LIMIT 1;
     -- If no valid discount found, discount stays 0
   END IF;
@@ -2530,7 +2532,8 @@ BEGIN
     FROM discounts d
     WHERE d.event_id = p_event_id
       AND d.is_active = TRUE
-      AND CURRENT_DATE BETWEEN d.valid_from AND d.valid_to
+      AND (d.valid_from IS NULL OR d.valid_from::date <= CURRENT_DATE)
+      AND (d.valid_to IS NULL OR d.valid_to::date >= CURRENT_DATE)
     ORDER BY d.created_at DESC
     LIMIT 1;
   END IF;
