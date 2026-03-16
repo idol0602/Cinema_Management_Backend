@@ -133,8 +133,24 @@ const compileTemplate = async (templateName, data) => {
  * @returns {Promise<object>} Nodemailer info object
  */
 export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
-  const transportConfigs = getFallbackConfigs();
   let lastError = null;
+
+  // In cloud environments, SMTP ports are often blocked or unstable.
+  // If Brevo API key exists, use HTTPS API first to avoid SMTP timeouts.
+  if (env.BREVO_API_KEY) {
+    try {
+      const result = await sendWithBrevoApi({ to, subject, html, from });
+      console.log("[Mail] Delivery via Brevo API succeeded");
+      return result;
+    } catch (apiError) {
+      console.error("[Mail] Brevo API delivery failed, fallback to SMTP", {
+        message: apiError?.message,
+      });
+      lastError = apiError;
+    }
+  }
+
+  const transportConfigs = getFallbackConfigs();
 
   for (let i = 0; i < transportConfigs.length; i++) {
     const config = transportConfigs[i];
@@ -160,19 +176,6 @@ export const sendMail = async ({ to, subject, html, from = "META CINEMA" }) => {
           message: error?.message,
         },
       );
-    }
-  }
-
-  if (env.BREVO_API_KEY) {
-    try {
-      const result = await sendWithBrevoApi({ to, subject, html, from });
-      console.log("[Mail] Fallback delivery via Brevo API succeeded");
-      return result;
-    } catch (apiError) {
-      console.error("[Mail] Brevo API fallback failed", {
-        message: apiError?.message,
-      });
-      lastError = apiError;
     }
   }
 
