@@ -61,8 +61,21 @@ export const aiGetMovieTypes = async () => {
   return await movieTypeService.findAll();
 };
 
-//
 export const aiGetShowTimes = async (query = {}) => {
+  if (!query.filter) {
+    query.filter = {};
+  }
+  if (!query.filter.start_time) {
+    query.filter.start_time = { $gte: new Date().toISOString() };
+  } else if (!query.filter.start_time.$gte) {
+    if (typeof query.filter.start_time === "string") {
+      const orig = query.filter.start_time;
+      query.filter.start_time = { $gte: orig };
+    } else {
+      query.filter.start_time.$gte = new Date().toISOString();
+    }
+  }
+
   return await showTimeService.findAndPaginate(query);
 };
 
