@@ -150,7 +150,7 @@ export const importFromExcel = async (filePath) => {
 };
 
 export const findNowShowing = async (query) => {
-  const cacheKey = buildCacheKey(CACHE_PREFIX.MOVIES, query);
+  const cacheKey = buildCacheKey(`${CACHE_PREFIX.MOVIES}:now_showing`, query);
 
   const cached = await getCache(cacheKey);
   if (cached) return cached;
@@ -168,7 +168,7 @@ export const findNowShowing = async (query) => {
 };
 
 export const findComingSoon = async (query) => {
-  const cacheKey = buildCacheKey(CACHE_PREFIX.MOVIES, query);
+  const cacheKey = buildCacheKey(`${CACHE_PREFIX.MOVIES}:coming_soon`, query);
 
   const cached = await getCache(cacheKey);
   if (cached) return cached;
