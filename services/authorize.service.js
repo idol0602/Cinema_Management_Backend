@@ -33,3 +33,12 @@ export const bulkCreate = async (authorizesData) => {
 };
 
 export const bulkRemove = async (authorizeIds) => repo.bulkRemove(authorizeIds);
+
+export const getAllActionsByRoleId = async (roleId) => {
+  const { data, error } = await repo.getAllActionsByRoleId(roleId);
+  if (error) throw error;
+  
+  // Flat data to return array of {path, method}:
+  if (!data) return [];
+  return data.map(item => item.actions).filter(Boolean);
+};

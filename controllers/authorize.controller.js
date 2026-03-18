@@ -127,3 +127,13 @@ export const bulkRemove = async (req, res, next) => {
     next(e);
   }
 };
+
+export const getAllActionsByRoleId = async (req, res, next) => {
+  try {
+    const { roleId } = req.params;
+    const actions = await service.getAllActionsByRoleId(roleId);
+    return success(res, actions, "Get all actions by role successfully");
+  } catch (e) {
+    next(e);
+  }
+};

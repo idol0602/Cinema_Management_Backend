@@ -13,14 +13,6 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 
 const router = Router();
 
-// defend from bypass email
-// router.post(
-//   "/register",
-//   validate(registerSchema),
-//   rateLimitByIP(RATE_LIMIT_ACTION.REGISTER),
-//   controller.register,
-// );
-
 router.post(
   "/login",
   validate(loginSchema),
@@ -58,7 +50,7 @@ router.post(
 router.put(
   "/update-profile/:id",
   auth,
-  authorize(registerSchema),
+  authorize(),
   controller.updateProfile,
 );
 

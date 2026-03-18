@@ -56,3 +56,15 @@ export const bulkCreate = async (authorizes) => {
 export const bulkRemove = async (authorizeIds) => {
   return await supabase.from("authorizes").delete().in("id", authorizeIds);
 };
+
+export const getAllActionsByRoleId = async (roleId) => {
+  return await supabase
+    .from("authorizes")
+    .select(`
+      actions (
+        path,
+        method
+      )
+    `)
+    .eq("role_id", roleId);
+};

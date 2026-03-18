@@ -53,7 +53,7 @@ export const auth = async (req, res, next) => {
     }
 
     req.user = decoded;
-    req.token = token; // Store token for logout/other operations
+    req.token = token;
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
