@@ -6,8 +6,6 @@ import { authorize } from "../middlewares/authorize.middleware.js";
 import {
   createMovieWithTypesSchema,
   updateMovieWithTypesSchema,
-  // createMovieSchema,
-  // updateMovieSchema,
 } from "../validators/movie.schema.js";
 import { uploadExcel } from "../middlewares/upload.middleware.js";
 import { movieUpload } from "../middlewares/upload.js";
@@ -20,8 +18,6 @@ const router = Router();
 
 router.get(
   "/all",
-  // auth,
-  // authorize(rootPath + "/all", METHODS.GET),
   controller.getAll,
 );
 router.get("/now-showing", controller.findNowShowing);
@@ -29,14 +25,10 @@ router.get("/coming-soon", controller.findComingSoon);
 router.get("/name", controller.getByName);
 router.get(
   "/:id",
-  // auth,
-  // authorize(rootPath + "/:id", METHODS.GET),
   controller.getById,
 );
 router.get(
   "/",
-  // auth,
-  // authorize(rootPath, METHODS.GET),
   controller.findAndPaginate,
 );
 

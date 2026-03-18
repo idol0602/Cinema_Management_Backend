@@ -20,22 +20,21 @@ const rootPath = "/show-time-seats";
 const router = Router();
 
 router.get("/", 
-  // authorize(rootPath, METHODS.GET), 
+  auth,
   controller.findAndPaginate);
 router.get(
   "/all",
-  // authorize(rootPath + "/all", METHODS.GET),
+  auth,
   controller.getAll,
 );
 router.get(
   "/:id",
-  // authorize(rootPath + "/:id", METHODS.GET),
+  auth,
   controller.getById,
 );
 router.get(
   "/status/:id",
-  // authorize(rootPath + "/status/:id", METHODS.GET),
-  // auth,
+  auth,
   controller.getStatusSeat,
 );
 

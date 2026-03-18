@@ -15,39 +15,33 @@ const router = Router();
 router.get(
   "/",
   auth,
-  authorize(rootPath, METHODS.GET),
   controller.findAndPaginate,
 );
 router.get(
   "/all",
   auth,
-  authorize(rootPath + "/all", METHODS.GET),
   controller.getAll,
 );
 router.get(
   "/:id",
   auth,
-  authorize(rootPath + "/:id", METHODS.GET),
   controller.getById,
 );
 router.post(
   "/",
   auth,
-  authorize(rootPath, METHODS.POST),
   validate(createComboItemInTicketSchema),
   controller.create,
 );
 router.put(
   "/:id",
   auth,
-  authorize(rootPath + "/:id", METHODS.PUT),
   validate(updateComboItemInTicketSchema),
   controller.update,
 );
 router.delete(
   "/:id",
   auth,
-  authorize(rootPath + "/:id", METHODS.DELETE),
   controller.remove,
 );
 

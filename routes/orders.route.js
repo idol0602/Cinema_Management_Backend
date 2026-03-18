@@ -4,7 +4,6 @@ import * as controller from "../controllers/order.controller.js";
 import { auth } from "../middlewares/auth.middleware.js";
 import { authorize } from "../middlewares/authorize.middleware.js";
 import {
-  createOrderSchema,
   updateOrderSchema,
   processOrderSchema,
   createPaymentUrlSchema,

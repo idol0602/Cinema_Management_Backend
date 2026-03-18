@@ -38,6 +38,11 @@ router.get(
   authorize(rootPath + "/role/:roleId", METHODS.GET),
   controller.getByRoleId,
 );
+router.get(
+  "/role/:roleId/actions",
+  auth,
+  controller.getAllActionsByRoleId,
+);
 
 router.post(
   "/",

@@ -7,6 +7,6 @@ import { RATE_LIMIT_ACTION } from "../utils/rateLimitAction.js";
 
 const router = Router();
 
-router.post("/chat", rateLimitByIP(RATE_LIMIT_ACTION.CHATBOT), validate(chatWithBotSchema), chatWithBot);
+router.post("/chat", validate(chatWithBotSchema), rateLimitByIP(RATE_LIMIT_ACTION.CHATBOT), chatWithBot);
 
 export default router;
