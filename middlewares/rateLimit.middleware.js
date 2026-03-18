@@ -31,12 +31,11 @@ export const rateLimitByUser = ({
                     message: "Too many requests",
                 });
             }
-            next();
+            return next();
         } catch (error) {
             console.error("Rate limit error:", error);
-            next();
+            return next();
         }
-        next();
     }
 }
 
@@ -69,11 +68,10 @@ export const rateLimitByIP = ({
                     message: "Too many requests",
                 });
             }
-            next();
+            return next();
         } catch (error) {
             console.error("Rate limit error:", error);
-            next();
+            return next();
         }
-        next();
     }
 }
