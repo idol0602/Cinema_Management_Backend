@@ -2078,6 +2078,7 @@ DECLARE
   v_subtotal NUMERIC;
   v_total_price NUMERIC;
   v_service_vat NUMERIC := 0;
+  v_service_vat_percent NUMERIC := 10;
 BEGIN
   -- ==========================================
   -- 1. GET SHOWTIME INFO
@@ -2220,10 +2221,12 @@ BEGIN
   -- ==========================================
   v_subtotal := v_total_ticket_price + v_total_combo_price + v_total_menu_price;
 
+  v_service_vat := ROUND(v_subtotal * (1 - v_discount_percent / 100) * v_service_vat_percent / 100.0);
+
   IF v_discount_percent > 0 THEN
-    v_total_price := v_subtotal * (1 - v_discount_percent / 100);
+    v_total_price := v_subtotal * (1 - v_discount_percent / 100) + v_service_vat;
   ELSE
-    v_total_price := v_subtotal;
+    v_total_price := v_subtotal + v_service_vat;
   END IF;
 
   -- ==========================================
