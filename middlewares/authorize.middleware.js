@@ -26,7 +26,7 @@ export const authorize = () => async (req, res, next) => {
       if (!roleActions) roleActions = [];
 
       // Lưu Cache vào Redis khoảng 30 phút (1800 giây)
-      await redis.set(cacheKey, JSON.stringify(roleActions), 'EX', 1800);
+      await redisCache.set(cacheKey, JSON.stringify(roleActions), 'EX', 1800);
     }
 
     // 3. Kiểm tra quyền
