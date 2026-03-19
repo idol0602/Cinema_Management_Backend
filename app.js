@@ -47,9 +47,15 @@ import { connectRabbitMQ } from "./config/rabbitmq.js";
 
 const app = express();
 
-app.set("trust proxy", 1); // Trust ngrok proxy for Secure cookies
+app.set("trust proxy", 1); // Trust proxy for Secure cookies (Vercel, ngrok, etc.)
 
-const allowedOrigins = [process.env.CLIENT_URL, process.env.DASHBOARD_URL];
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.DASHBOARD_URL,
+  "http://localhost:3000",
+  "http://localhost:5000",
+  "http://localhost:5173",
+].filter(Boolean); // Remove undefined values
 
 app.set("query parser", (str) =>
   qs.parse(str, {
@@ -61,13 +67,27 @@ app.set("query parser", (str) =>
     allowPrototypes: false,
   }),
 );
+
 app.use(helmet());
+
+// Enhanced CORS configuration for cookie support across domains
 app.use(
   cors({
-    origin: allowedOrigins,
-    credentials: true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // Allow cookies to be sent
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400, // 24 hours
   }),
 );
+
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));

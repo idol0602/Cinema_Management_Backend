@@ -333,13 +333,16 @@ export const getCookieOptions = () => {
   const isProduction = env.NODE_ENV === "production";
   const maxAge = parseJwtExpiry(env.JWT_EXPIRES_IN) * 1000; // Convert to milliseconds
 
+  // On Vercel and most production deployments, frontend and backend are on different domains
+  // This requires sameSite: "none" and secure: true
+  const requiresCrossSiteCookie = isProduction; // Assume cross-site on production
+
   return {
     httpOnly: true,
-    secure: isProduction, // Only require HTTPS in production
-    sameSite: isProduction ? "strict" : "lax", // Stricter in production
+    secure: isProduction, // HTTPS required in production
+    sameSite: requiresCrossSiteCookie ? "none" : "lax", // "none" allows cross-site, required for Vercel
     maxAge: maxAge,
     path: "/",
-    domain: isProduction ? undefined : undefined, // Let browser handle domain
   };
 };
 
