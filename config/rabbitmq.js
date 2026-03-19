@@ -4,21 +4,28 @@ import { Consumer } from "../rabbitmq/consumer.js";
 
 let channel = null;
 let connection = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 5000; // 5 seconds
 
 export const connectRabbitMQ = async () => {
   try {
     console.log("Connecting to RabbitMQ...");
     connection = await amqp.connect(process.env.RABBITMQ_URL);
     channel = await connection.createChannel();
+    reconnectAttempts = 0; // Reset on successful connection
 
-    // Handle connection errors and reconnect
+    // Handle connection errors - attempt reconnect
     connection.on("error", (err) => {
       console.error("❌ RabbitMQ connection error:", err.message);
       channel = null;
+      attemptReconnect();
     });
+
     connection.on("close", () => {
       console.warn("⚠️ RabbitMQ connection closed");
       channel = null;
+      attemptReconnect();
     });
 
     console.log("[RabbitMQ] Setting up exchanges and queues...");
@@ -37,6 +44,29 @@ export const connectRabbitMQ = async () => {
   }
 };
 
+const attemptReconnect = async () => {
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.error(
+      "❌ Max reconnection attempts reached. Manual restart required.",
+    );
+    return;
+  }
+
+  reconnectAttempts++;
+  console.log(
+    `⏳ Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY}ms...`,
+  );
+
+  setTimeout(async () => {
+    try {
+      await connectRabbitMQ();
+    } catch (error) {
+      console.error("Reconnection failed:", error.message);
+      attemptReconnect();
+    }
+  }, RECONNECT_DELAY);
+};
+
 const setup = async () => {
   for (let [_, value] of Object.entries(EXCHANGE)) {
     await channel.assertExchange(value.exchange, value.type, {
@@ -49,3 +79,7 @@ const setup = async () => {
 };
 
 export const getChannel = () => channel;
+
+export const isRabbitMQConnected = () => {
+  return channel !== null && connection !== null;
+};
