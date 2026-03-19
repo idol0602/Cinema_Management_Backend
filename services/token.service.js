@@ -309,7 +309,7 @@ export const isTokenVersionValid = async (userId, tokenVersion) => {
   }
 };
 
-console.log(env.NODE_ENV)
+console.log(env.NODE_ENV);
 
 /**
  * Clear active session của user (dùng khi logout)
@@ -335,10 +335,11 @@ export const getCookieOptions = () => {
 
   return {
     httpOnly: true,
-    secure: true, // Must be true for SameSite: 'none'
-    sameSite: "none", // Allow cross-site cookies (needed for Ngrok)
+    secure: isProduction, // Only require HTTPS in production
+    sameSite: isProduction ? "strict" : "lax", // Stricter in production
     maxAge: maxAge,
     path: "/",
+    domain: isProduction ? undefined : undefined, // Let browser handle domain
   };
 };
 
