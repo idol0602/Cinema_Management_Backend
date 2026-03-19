@@ -427,6 +427,7 @@ const buildEmailData = (details) => {
 
 export const getOrderHistory = async (userId, query) => {
   query.filter = {
+    ...query.filter,
     user_id: userId,
   };
   return await repo.findAndPaginate(query);
