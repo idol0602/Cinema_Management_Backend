@@ -1,5 +1,5 @@
 import { EXCHANGE } from "./exchange.js";
-import { getChannel, waitForChannel } from "../config/rabbitmq.js";
+import { waitForChannel } from "../config/rabbitmq.js";
 
 const publishWithRetry = async (
   exchange,
@@ -12,7 +12,7 @@ const publishWithRetry = async (
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // Always wait for channel to be ready before attempting publish
+      // Wait for channel to be ready and alive before attempting publish
       const channel = await waitForChannel(30000); // Wait max 30s for channel
 
       if (!channel) {
