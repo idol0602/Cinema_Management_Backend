@@ -1,5 +1,5 @@
 import { EXCHANGE } from "./exchange.js";
-import { getChannel } from "../config/rabbitmq.js";
+import { getChannel, waitForChannel } from "../config/rabbitmq.js";
 
 const publishWithRetry = async (
   exchange,
@@ -12,17 +12,10 @@ const publishWithRetry = async (
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const channel = getChannel();
+      // Always wait for channel to be ready before attempting publish
+      const channel = await waitForChannel(30000); // Wait max 30s for channel
+
       if (!channel) {
-        if (attempt < maxRetries) {
-          // Exponential backoff: 1s, 2s, 4s, 8s, 16s
-          const delayMs = 1000 * Math.pow(2, attempt);
-          console.warn(
-            `[Producer] Channel unavailable, waiting ${delayMs}ms before retry (${attempt + 1}/${maxRetries})...`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-          continue;
-        }
         throw new Error("RabbitMQ channel is unavailable");
       }
 
@@ -34,6 +27,7 @@ const publishWithRetry = async (
     } catch (error) {
       lastError = error;
       if (attempt < maxRetries) {
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
         const delayMs = 1000 * Math.pow(2, attempt);
         console.warn(
           `[Producer] Publish attempt ${attempt + 1} failed: ${error.message}. Waiting ${delayMs}ms before retry...`,

@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import { isRabbitMQConnected } from "./config/rabbitmq.js";
 import authRoutes from "./routes/auth.route.js";
 import authorizeRoutes from "./routes/authorize.route.js";
 import actionRoutes from "./routes/action.route.js";
@@ -94,6 +95,19 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
+// Middleware to check RabbitMQ status for critical operations
+app.use((req, res, next) => {
+  // Log RabbitMQ status for monitoring
+  if (!isRabbitMQConnected()) {
+    console.warn(
+      `[RabbitMQ] Connection status check: NOT CONNECTED for ${req.method} ${req.path}`,
+    );
+    // For now, continue to allow requests - they will wait in waitForChannel
+    // In future, could restrict certain endpoints
+  }
+  next();
+});
 
 // Serve static files from public directory (for logo in emails, etc.)
 app.use(express.static("public"));

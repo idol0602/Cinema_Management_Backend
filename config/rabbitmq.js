@@ -5,43 +5,86 @@ import { Consumer } from "../rabbitmq/consumer.js";
 let channel = null;
 let connection = null;
 let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_DELAY = 5000; // 5 seconds
+let isConnecting = false;
+let readyPromise = null;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const RECONNECT_DELAY = 3000; // 3 seconds
+
+// Mechanism to wait for channel to be ready
+const waitForChannel = async (maxWaitMs = 60000) => {
+  const startTime = Date.now();
+  while (!channel && Date.now() - startTime < maxWaitMs) {
+    if (readyPromise) {
+      try {
+        await readyPromise;
+        if (channel) return channel;
+      } catch (error) {
+        console.warn("[RabbitMQ] Waiting for reconnect...");
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Check every 500ms
+  }
+  if (!channel) {
+    throw new Error(
+      "RabbitMQ channel is unavailable after waiting. Connection may be failing.",
+    );
+  }
+  return channel;
+};
 
 export const connectRabbitMQ = async () => {
-  try {
-    console.log("Connecting to RabbitMQ...");
-    connection = await amqp.connect(process.env.RABBITMQ_URL);
-    channel = await connection.createChannel();
-    reconnectAttempts = 0; // Reset on successful connection
-
-    // Handle connection errors - attempt reconnect
-    connection.on("error", (err) => {
-      console.error("❌ RabbitMQ connection error:", err.message);
-      channel = null;
-      attemptReconnect();
-    });
-
-    connection.on("close", () => {
-      console.warn("⚠️ RabbitMQ connection closed");
-      channel = null;
-      attemptReconnect();
-    });
-
-    console.log("[RabbitMQ] Setting up exchanges and queues...");
-    await setup(); // Wait for queues to be declared
-
-    console.log("[RabbitMQ] Starting consumers...");
-    await Consumer.ready(); // Then start consumers
-
-    console.log("✅ RabbitMQ connected and ready");
-  } catch (error) {
-    console.error("❌ RabbitMQ connection error:", error.message);
-    console.error(error);
-    channel = null; // Reset channel on failure
-    connection = null;
-    throw error; // Re-throw to let server.js handle it
+  if (isConnecting) {
+    console.log("[RabbitMQ] Connection already in progress, waiting...");
+    if (readyPromise) await readyPromise;
+    return;
   }
+
+  isConnecting = true;
+  readyPromise = (async () => {
+    try {
+      console.log("Connecting to RabbitMQ...");
+      const url = process.env.RABBITMQ_URL;
+      if (!url) {
+        throw new Error(
+          "RABBITMQ_URL environment variable is not set. Check your .env file or Render environment variables.",
+        );
+      }
+
+      connection = await amqp.connect(url);
+      channel = await connection.createChannel();
+      reconnectAttempts = 0; // Reset on successful connection
+
+      // Handle connection errors - attempt reconnect
+      connection.on("error", (err) => {
+        console.error("❌ RabbitMQ connection error:", err.message);
+        // Don't immediately set to null - let reconnect try
+        attemptReconnect();
+      });
+
+      connection.on("close", () => {
+        console.warn("⚠️ RabbitMQ connection closed");
+        attemptReconnect();
+      });
+
+      console.log("[RabbitMQ] Setting up exchanges and queues...");
+      await setup(); // Wait for queues to be declared
+
+      console.log("[RabbitMQ] Starting consumers...");
+      await Consumer.ready(); // Then start consumers
+
+      console.log("✅ RabbitMQ connected and ready");
+      isConnecting = false;
+    } catch (error) {
+      console.error("❌ RabbitMQ connection error:", error.message);
+      console.error(error);
+      channel = null; // Reset channel on failure
+      connection = null;
+      isConnecting = false;
+      throw error; // Re-throw to let server.js handle it
+    }
+  })();
+
+  await readyPromise;
 };
 
 const attemptReconnect = async () => {
@@ -49,6 +92,7 @@ const attemptReconnect = async () => {
     console.error(
       "❌ Max reconnection attempts reached. Manual restart required.",
     );
+    channel = null;
     return;
   }
 
@@ -83,3 +127,5 @@ export const getChannel = () => channel;
 export const isRabbitMQConnected = () => {
   return channel !== null && connection !== null;
 };
+
+export { waitForChannel };
