@@ -7,8 +7,10 @@ let connection = null;
 let reconnectAttempts = 0;
 let isConnecting = false;
 let readyPromise = null;
+let reconnectTimer = null;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_DELAY = 3000; // 3 seconds
+const RECONNECT_COOLDOWN = 30000; // 30 seconds after max attempts
 
 // Check if channel is actually alive (not just non-null)
 const isChannelAlive = () => {
@@ -45,7 +47,8 @@ const waitForChannel = async (maxWaitMs = 60000) => {
         // Continue waiting, reconnect will retry
       }
     } else {
-      // No active reconnect, wait a bit and check again
+      // No active reconnect: proactively start one so requests don't just timeout.
+      attemptReconnect();
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
@@ -74,9 +77,18 @@ export const connectRabbitMQ = async () => {
         );
       }
 
-      connection = await amqp.connect(url);
+      connection = await amqp.connect(url, {
+        heartbeat: 30,
+        clientProperties: {
+          connection_name: "cinema-backend-render",
+        },
+      });
       channel = await connection.createChannel();
       reconnectAttempts = 0; // Reset on successful connection
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
 
       // Handle connection errors - attempt reconnect
       connection.on("error", (err) => {
@@ -136,11 +148,20 @@ const attemptReconnect = async () => {
 
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
     console.error(
-      "❌ Max reconnection attempts reached. Manual restart required.",
+      "❌ Max reconnection attempts reached. Entering cooldown before retry.",
     );
     channel = null;
     connection = null;
     isConnecting = false;
+
+    // Do not deadlock forever; retry again after cooldown.
+    if (!reconnectTimer) {
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        reconnectAttempts = 0;
+        attemptReconnect();
+      }, RECONNECT_COOLDOWN);
+    }
     return;
   }
 
@@ -149,7 +170,12 @@ const attemptReconnect = async () => {
     `⏳ Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${RECONNECT_DELAY}ms...`,
   );
 
-  setTimeout(async () => {
+  if (reconnectTimer) {
+    return;
+  }
+
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
     try {
       await connectRabbitMQ();
     } catch (error) {
