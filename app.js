@@ -85,7 +85,7 @@ app.use(
     allowedHeaders: [
       "Content-Type",
       "Authorization",
-      "ngrok-skip-browser-warning", // Allow ngrok header for development
+      "ngrok-skip-browser-warning",
     ],
     exposedHeaders: ["Content-Type", "Authorization"],
     maxAge: 86400, // 24 hours
