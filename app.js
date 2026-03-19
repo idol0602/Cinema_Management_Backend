@@ -43,7 +43,6 @@ import movieMovieTypesRoutes from "./routes/movie_moive_types.route.js";
 import chatRoutes from "./routes/chat.route.js";
 import aiBookingRoutes from "./routes/ai_booking.route.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
-import { connectRabbitMQ } from "./config/rabbitmq.js";
 
 const app = express();
 
@@ -103,8 +102,6 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === "development" ? 1000 : 100,
 });
-
-connectRabbitMQ();
 
 // app.use(limiter);
 

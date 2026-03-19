@@ -5,26 +5,29 @@ import { Consumer } from "../rabbitmq/consumer.js";
 let channel = null;
 
 export const connectRabbitMQ = async () => {
-    try {
-        const connection = await amqp.connect(process.env.RABBITMQ_URL);
-        channel = await connection.createChannel();
-        await setup();  // Wait for queues to be declared
-        await Consumer.ready();  // Then start consumers
-        console.log("RabbitMQ connected");
-    } catch (error) {
-        console.error("RabbitMQ connection error", error);
-    }
-}
+  try {
+    console.log("Connecting to RabbitMQ...");
+    const connection = await amqp.connect(process.env.RABBITMQ_URL);
+    channel = await connection.createChannel();
+    await setup(); // Wait for queues to be declared
+    await Consumer.ready(); // Then start consumers
+    console.log("✅ RabbitMQ connected and ready");
+  } catch (error) {
+    console.error("❌ RabbitMQ connection error:", error.message);
+    channel = null; // Reset channel on failure
+    throw error; // Re-throw to let server.js handle it
+  }
+};
 
 const setup = async () => {
-    for(let [_,value] of Object.entries(EXCHANGE)) {
-        await channel.assertExchange(value.exchange, value.type, {
-            durable: true,
-            ...(value.arguments && { arguments: value.arguments }),
-        });
-        await channel.assertQueue(value.queue, {durable: true})
-        await channel.bindQueue(value.queue, value.exchange, value.bindingKey)
-    }
-}
+  for (let [_, value] of Object.entries(EXCHANGE)) {
+    await channel.assertExchange(value.exchange, value.type, {
+      durable: true,
+      ...(value.arguments && { arguments: value.arguments }),
+    });
+    await channel.assertQueue(value.queue, { durable: true });
+    await channel.bindQueue(value.queue, value.exchange, value.bindingKey);
+  }
+};
 
 export const getChannel = () => channel;
