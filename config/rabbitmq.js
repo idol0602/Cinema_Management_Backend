@@ -8,6 +8,7 @@ let reconnectAttempts = 0;
 let isConnecting = false;
 let readyPromise = null;
 let reconnectTimer = null;
+let lastConnectionError = null;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_DELAY = 3000; // 3 seconds
 const RECONNECT_COOLDOWN = 30000; // 30 seconds after max attempts
@@ -48,14 +49,19 @@ const waitForChannel = async (maxWaitMs = 60000) => {
       }
     } else {
       // No active reconnect: proactively start one so requests don't just timeout.
-      attemptReconnect();
+      if (!isConnecting && channel === null) {
+        // Only trigger reconnect if channel is truly null
+        // Reset stale readyPromise so next cycle starts fresh
+        readyPromise = null;
+        attemptReconnect();
+      }
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
 
   // Timeout reached
   throw new Error(
-    `RabbitMQ channel is unavailable after waiting ${maxWaitMs}ms. Connection may be failing or reconnect attempts exhausted.`,
+    `RabbitMQ channel is unavailable after waiting ${maxWaitMs}ms. Last error: ${lastConnectionError?.message || "unknown"}. Check RABBITMQ_URL and broker status.`,
   );
 };
 
@@ -124,6 +130,8 @@ export const connectRabbitMQ = async () => {
       channel = null; // Reset channel on failure
       connection = null;
       isConnecting = false; // CRITICAL: Reset flag so reconnect can retry
+      lastConnectionError = error; // Track last error for diagnostics
+      readyPromise = null; // Reset so next attempt starts fresh
       throw error; // Re-throw to let server.js handle it
     }
   })();
@@ -153,6 +161,7 @@ const attemptReconnect = async () => {
     channel = null;
     connection = null;
     isConnecting = false;
+    readyPromise = null; // Reset promise so next cycle starts fresh
 
     // Do not deadlock forever; retry again after cooldown.
     if (!reconnectTimer) {
