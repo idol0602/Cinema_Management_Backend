@@ -82,7 +82,11 @@ app.use(
     },
     credentials: true, // Allow cookies to be sent
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "ngrok-skip-browser-warning", // Allow ngrok header for development
+    ],
     exposedHeaders: ["Content-Type", "Authorization"],
     maxAge: 86400, // 24 hours
   }),
