@@ -12,34 +12,48 @@ const RECONNECT_DELAY = 3000; // 3 seconds
 
 // Check if channel is actually alive (not just non-null)
 const isChannelAlive = () => {
-  return (
-    channel &&
-    connection &&
-    !connection.closed &&
-    connection.connection !== null
-  );
+  // Simple check: if channel is null, it means connection was reset
+  // amqplib will auto-close channel if connection dies
+  return channel !== null && connection !== null;
 };
 
 // Mechanism to wait for channel to be ready
 const waitForChannel = async (maxWaitMs = 60000) => {
   const startTime = Date.now();
-  while (!isChannelAlive() && Date.now() - startTime < maxWaitMs) {
-    if (readyPromise) {
-      try {
-        await readyPromise;
-        if (isChannelAlive()) return channel;
-      } catch (error) {
-        console.warn("[RabbitMQ] Waiting for reconnect...");
-      }
+
+  while (Date.now() - startTime < maxWaitMs) {
+    // If channel is alive, return it immediately
+    if (isChannelAlive()) {
+      return channel;
     }
-    await new Promise((resolve) => setTimeout(resolve, 500)); // Check every 500ms
+
+    // If reconnect is in progress, wait for it with timeout
+    if (readyPromise && isConnecting) {
+      try {
+        await Promise.race([
+          readyPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Reconnect timeout")), 5000),
+          ),
+        ]);
+        // After reconnect completes, check again
+        if (isChannelAlive()) {
+          return channel;
+        }
+      } catch (error) {
+        console.warn(`[RabbitMQ] Reconnect wait failed: ${error.message}`);
+        // Continue waiting, reconnect will retry
+      }
+    } else {
+      // No active reconnect, wait a bit and check again
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
-  if (!isChannelAlive()) {
-    throw new Error(
-      "RabbitMQ channel is unavailable after waiting. Connection may be failing.",
-    );
-  }
-  return channel;
+
+  // Timeout reached
+  throw new Error(
+    `RabbitMQ channel is unavailable after waiting ${maxWaitMs}ms. Connection may be failing or reconnect attempts exhausted.`,
+  );
 };
 
 export const connectRabbitMQ = async () => {
@@ -70,6 +84,8 @@ export const connectRabbitMQ = async () => {
         // Reset channel and connection immediately
         channel = null;
         connection = null;
+        // Reset isConnecting flag so reconnect can actually happen
+        isConnecting = false;
         attemptReconnect();
       });
 
@@ -78,6 +94,8 @@ export const connectRabbitMQ = async () => {
         // Reset channel and connection immediately
         channel = null;
         connection = null;
+        // Reset isConnecting flag so reconnect can actually happen
+        isConnecting = false;
         attemptReconnect();
       });
 
@@ -91,10 +109,9 @@ export const connectRabbitMQ = async () => {
       isConnecting = false;
     } catch (error) {
       console.error("❌ RabbitMQ connection error:", error.message);
-      console.error(error);
       channel = null; // Reset channel on failure
       connection = null;
-      isConnecting = false;
+      isConnecting = false; // CRITICAL: Reset flag so reconnect can retry
       throw error; // Re-throw to let server.js handle it
     }
   })();
@@ -111,12 +128,19 @@ const attemptReconnect = async () => {
     return;
   }
 
+  // If channel somehow got fixed during the check, don't reconnect
+  if (isChannelAlive()) {
+    console.log("[RabbitMQ] Channel is alive, no reconnect needed");
+    return;
+  }
+
   if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
     console.error(
       "❌ Max reconnection attempts reached. Manual restart required.",
     );
     channel = null;
     connection = null;
+    isConnecting = false;
     return;
   }
 
