@@ -223,7 +223,10 @@ export const getAiBookingState = async (userId) => {
   try {
     const state = await redis.get(`ai_booking_state:${userId}`);
     if (state) {
-      return { data: JSON.parse(state), error: null };
+      const parsed = JSON.parse(state);
+      // Ensure state keys are normalized to camelCase even if saved with snake_case
+      const normalized = normalizeStateKeys(parsed);
+      return { data: normalized, error: null };
     }
 
     // Initialize default state if not found
@@ -242,6 +245,7 @@ export const getAiBookingState = async (userId) => {
 
     return { data: defaultState, error: null };
   } catch (error) {
+    console.error("❌ Error getting AI booking state:", error);
     return { data: null, error };
   }
 };
@@ -265,23 +269,43 @@ export const saveAiBookingState = async (userId, state) => {
     const hasOwn = (obj, key) =>
       Object.prototype.hasOwnProperty.call(obj || {}, key);
 
+    // Normalize incoming state: convert snake_case to camelCase (N8N workflow compatibility)
+    const normalizedState = state ? normalizeStateKeys(state) : {};
+
     const mergedState = {
       ...currentState,
-      ...(hasOwn(state, "step") ? { step: state.step } : {}),
-      ...(hasOwn(state, "movieId") ? { movieId: state.movieId } : {}),
-      ...(hasOwn(state, "showTimeId") ? { showTimeId: state.showTimeId } : {}),
-      ...(hasOwn(state, "showTimeSeatIds")
-        ? { showTimeSeatIds: state.showTimeSeatIds || [] }
+      ...(hasOwn(normalizedState, "step")
+        ? { step: normalizedState.step }
         : {}),
-      ...(hasOwn(state, "comboIds") ? { comboIds: state.comboIds || [] } : {}),
-      ...(hasOwn(state, "menuItems")
-        ? { menuItems: state.menuItems || [] }
+      ...(hasOwn(normalizedState, "movieId")
+        ? { movieId: normalizedState.movieId }
         : {}),
-      ...(hasOwn(state, "eventId") ? { eventId: state.eventId } : {}),
-      ...(hasOwn(state, "paymentMethod")
-        ? { paymentMethod: state.paymentMethod }
+      ...(hasOwn(normalizedState, "showTimeId")
+        ? { showTimeId: normalizedState.showTimeId }
+        : {}),
+      ...(hasOwn(normalizedState, "showTimeSeatIds")
+        ? { showTimeSeatIds: normalizedState.showTimeSeatIds || [] }
+        : {}),
+      ...(hasOwn(normalizedState, "comboIds")
+        ? { comboIds: normalizedState.comboIds || [] }
+        : {}),
+      ...(hasOwn(normalizedState, "menuItems")
+        ? { menuItems: normalizedState.menuItems || [] }
+        : {}),
+      ...(hasOwn(normalizedState, "eventId")
+        ? { eventId: normalizedState.eventId }
+        : {}),
+      ...(hasOwn(normalizedState, "paymentMethod")
+        ? { paymentMethod: normalizedState.paymentMethod }
         : {}),
     };
+
+    console.log("💾 Saving AI booking state:", {
+      userId,
+      step: mergedState.step,
+      hasMovie: !!mergedState.movieId,
+      hasShowTime: !!mergedState.showTimeId,
+    });
 
     // TTL 24 hours (86400 seconds)
     await redis.set(`ai_booking_state:${userId}`, JSON.stringify(mergedState), {
@@ -289,14 +313,53 @@ export const saveAiBookingState = async (userId, state) => {
     });
     return { data: mergedState, error: null };
   } catch (error) {
+    console.error("❌ Error saving AI booking state:", error);
     return { data: null, error };
   }
+};
+
+// Helper: Normalize snake_case keys from N8N to camelCase for internal use
+const normalizeStateKeys = (state) => {
+  if (!state || typeof state !== "object") {
+    return state;
+  }
+
+  const normalized = {};
+
+  const keyMap = {
+    // snake_case -> camelCase mapping
+    step: "step",
+    movie_id: "movieId",
+    movieId: "movieId",
+    show_time_id: "showTimeId",
+    showTimeId: "showTimeId",
+    show_time_seat_ids: "showTimeSeatIds",
+    showTimeSeatIds: "showTimeSeatIds",
+    seat_ids: "showTimeSeatIds",
+    combo_ids: "comboIds",
+    comboIds: "comboIds",
+    menu_items: "menuItems",
+    menuItems: "menuItems",
+    event_id: "eventId",
+    eventId: "eventId",
+    payment_method: "paymentMethod",
+    paymentMethod: "paymentMethod",
+  };
+
+  for (const [originalKey, value] of Object.entries(state)) {
+    const mappedKey = keyMap[originalKey] || originalKey;
+    normalized[mappedKey] = value;
+  }
+
+  return normalized;
 };
 
 export const clearAiBookingState = async (userId) => {
   try {
     const rawState = await redis.get(`ai_booking_state:${userId}`);
-    const bookingState = rawState ? JSON.parse(rawState) : null;
+    const parsedState = rawState ? JSON.parse(rawState) : null;
+    // Normalize keys to camelCase before accessing
+    const bookingState = parsedState ? normalizeStateKeys(parsedState) : null;
     const showTimeSeatIds = bookingState?.showTimeSeatIds || [];
 
     const tasks = [redis.del(`ai_booking_state:${userId}`)];
@@ -332,6 +395,7 @@ export const clearAiBookingState = async (userId) => {
       error: null,
     };
   } catch (error) {
+    console.error("❌ Error clearing AI booking state:", error);
     return { data: null, error };
   }
 };

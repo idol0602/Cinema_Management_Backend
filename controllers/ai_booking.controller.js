@@ -284,8 +284,15 @@ export const getAiBookingStateDetails = async (req, res, next) => {
 
 export const saveAiBookingState = async (req, res, next) => {
   try {
-    const { id, state } = req.body;
-    const { data, error } = await service.saveAiBookingState(id, state);
+    // Support both 'id' (from frontend) and 'sessionId' (from N8N workflow)
+    const userId = req.body.id || req.body.sessionId;
+    const state = req.body.state;
+
+    if (!userId) {
+      return fail(res, "User ID or Session ID is required");
+    }
+
+    const { data, error } = await service.saveAiBookingState(userId, state);
     if (error) {
       return fail(res, error);
     }
