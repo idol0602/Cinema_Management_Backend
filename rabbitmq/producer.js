@@ -1,16 +1,24 @@
 import { EXCHANGE } from "./exchange.js";
 import { getChannel } from "../config/rabbitmq.js";
 
-const publishWithRetry = async (exchange, bindingKey, data, options = {}, maxRetries = 1) => {
+const publishWithRetry = async (
+  exchange,
+  bindingKey,
+  data,
+  options = {},
+  maxRetries = 1,
+) => {
   let lastError = null;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const channel = getChannel();
       if (!channel) {
         if (attempt < maxRetries) {
-          console.warn(`[Producer] Channel unavailable, waiting 1s before retry (${attempt + 1}/${maxRetries})...`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.warn(
+            `[Producer] Channel unavailable, waiting 1s before retry (${attempt + 1}/${maxRetries})...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
         }
         throw new Error("RabbitMQ channel is unavailable");
@@ -21,12 +29,14 @@ const publishWithRetry = async (exchange, bindingKey, data, options = {}, maxRet
     } catch (error) {
       lastError = error;
       if (attempt < maxRetries) {
-        console.warn(`[Producer] Publish attempt ${attempt + 1} failed: ${error.message}. Retrying...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.warn(
+          `[Producer] Publish attempt ${attempt + 1} failed: ${error.message}. Retrying...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
   }
-  
+
   throw lastError;
 };
 
@@ -97,40 +107,6 @@ export const Producer = {
     }
     try {
       await publishWithRetry(
-        EXCHANGE.DELETE_CACHE.exchange,
-        EXCHANGE.DELETE_CACHE.bindingKey,
-        Buffer.from(JSON.stringify({ pattern })),
-      );
-      console.log("[Producer.deleteCache] Message published successfully");
-    } catch (error) {
-      console.error(
-        "[Producer.deleteCache] Failed to publish message:",
-        error.message,
-      );
-      throw error;
-    }
-  },
-};
-    } catch (error) {
-      console.error(
-        "[Producer.seatExpiration] Failed to publish message:",
-        error.message,
-      );
-      throw error;
-    }
-  },
-  deleteCache: async (pattern) => {
-    const channel = getChannel();
-    if (!channel) {
-      console.error(
-        "[Producer.deleteCache] Channel is not available - RabbitMQ may be disconnected",
-      );
-      throw new Error(
-        "Cache service unavailable. RabbitMQ is not connected. Check server logs.",
-      );
-    }
-    try {
-      channel.publish(
         EXCHANGE.DELETE_CACHE.exchange,
         EXCHANGE.DELETE_CACHE.bindingKey,
         Buffer.from(JSON.stringify({ pattern })),
