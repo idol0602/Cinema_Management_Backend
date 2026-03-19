@@ -6,7 +6,7 @@ const publishWithRetry = async (
   bindingKey,
   data,
   options = {},
-  maxRetries = 1,
+  maxRetries = 5,
 ) => {
   let lastError = null;
 
@@ -15,24 +15,30 @@ const publishWithRetry = async (
       const channel = getChannel();
       if (!channel) {
         if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+          const delayMs = 1000 * Math.pow(2, attempt);
           console.warn(
-            `[Producer] Channel unavailable, waiting 1s before retry (${attempt + 1}/${maxRetries})...`,
+            `[Producer] Channel unavailable, waiting ${delayMs}ms before retry (${attempt + 1}/${maxRetries})...`,
           );
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
           continue;
         }
         throw new Error("RabbitMQ channel is unavailable");
       }
 
       channel.publish(exchange, bindingKey, data, options);
+      console.log(
+        `[Producer] Message published successfully (attempt ${attempt + 1}/${maxRetries + 1})`,
+      );
       return true;
     } catch (error) {
       lastError = error;
       if (attempt < maxRetries) {
+        const delayMs = 1000 * Math.pow(2, attempt);
         console.warn(
-          `[Producer] Publish attempt ${attempt + 1} failed: ${error.message}. Retrying...`,
+          `[Producer] Publish attempt ${attempt + 1} failed: ${error.message}. Waiting ${delayMs}ms before retry...`,
         );
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
@@ -42,15 +48,6 @@ const publishWithRetry = async (
 
 export const Producer = {
   mail: async (data) => {
-    const channel = getChannel();
-    if (!channel) {
-      console.error(
-        "[Producer.mail] Channel is not available - RabbitMQ disconnected or not initialized",
-      );
-      throw new Error(
-        "Mail service unavailable. RabbitMQ is not connected. Check server logs.",
-      );
-    }
     try {
       await publishWithRetry(
         EXCHANGE.MAIL.exchange,
@@ -67,15 +64,6 @@ export const Producer = {
     }
   },
   seatExpiration: async (data, delayMs) => {
-    const channel = getChannel();
-    if (!channel) {
-      console.error(
-        "[Producer.seatExpiration] Channel is not available - RabbitMQ disconnected or not initialized",
-      );
-      throw new Error(
-        "Seat expiration service unavailable. RabbitMQ is not connected. Check server logs.",
-      );
-    }
     try {
       await publishWithRetry(
         EXCHANGE.SEAT_EXPIRATION.exchange,
@@ -96,15 +84,6 @@ export const Producer = {
     }
   },
   deleteCache: async (pattern) => {
-    const channel = getChannel();
-    if (!channel) {
-      console.error(
-        "[Producer.deleteCache] Channel is not available - RabbitMQ disconnected or not initialized",
-      );
-      throw new Error(
-        "Cache service unavailable. RabbitMQ is not connected. Check server logs.",
-      );
-    }
     try {
       await publishWithRetry(
         EXCHANGE.DELETE_CACHE.exchange,
