@@ -279,3 +279,13 @@ ON CONFLICT (id) DO UPDATE SET
   path = EXCLUDED.path,
   method = EXCLUDED.method,
   is_active = EXCLUDED.is_active;
+
+INSERT INTO actions (id, name, path, method, created_at, is_active)
+VALUES
+('action_get_refunds_alias', 'GET /api/refunds', '/api/refunds', 'GET', NOW(), true),
+('action_get_statisticals_alias', 'GET /api/statisticals', '/api/statisticals', 'GET', NOW(), true)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  path = EXCLUDED.path,
+  method = EXCLUDED.method,
+  is_active = EXCLUDED.is_active;

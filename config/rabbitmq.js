@@ -45,7 +45,6 @@ const waitForChannel = async (maxWaitMs = 60000) => {
         }
       } catch (error) {
         console.warn(`[RabbitMQ] Reconnect wait failed: ${error.message}`);
-        // Continue waiting, reconnect will retry
       }
     } else {
       // No active reconnect: proactively start one so requests don't just timeout.
