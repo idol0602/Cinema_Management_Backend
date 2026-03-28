@@ -309,7 +309,7 @@ export const isTokenVersionValid = async (userId, tokenVersion) => {
   }
 };
 
-console.log(env.NODE_ENV);
+
 
 /**
  * Clear active session của user (dùng khi logout)

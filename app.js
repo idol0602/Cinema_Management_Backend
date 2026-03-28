@@ -68,7 +68,12 @@ app.set("query parser", (str) =>
   }),
 );
 
-app.use(helmet());
+app.use(helmet({
+  // Relax cross-origin policies cho cross-site cookie support (Vercel ↔ Render)
+  crossOriginOpenerPolicy: { policy: "unsafe-none" },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
 // Enhanced CORS configuration for cookie support across domains
 app.use(
